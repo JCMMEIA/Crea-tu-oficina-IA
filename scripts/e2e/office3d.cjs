@@ -49,7 +49,7 @@ async function clickProjected(p, id) {
   const legend = await p.locator(".o3d-side").innerText();
   const num = (name) => Number((legend.match(new RegExp(name + "\\s*·\\s*(\\d+)")) || [])[1]);
   check(num("Marketing") === 8 && num("Ventas") === 5, `4 · marketing=${num("Marketing")} y ventas=${num("Ventas")} empleados (esperado 8 y 5)`);
-  check(legend.includes("Automatizaciones / IA"), "3 · zona de Automatizaciones / IA solo porque existe una automatización real");
+  check(legend.includes("Tareas automáticas"), "3 · zona de Tareas automáticas solo porque existe una automatización real");
   await shot(p, "03-multiples-departamentos-3d");
   const sumEmp = await p.locator('[data-testid^="iso-desk-"]').count();
   check(sumEmp === ids.counts.multi + 1, `   estaciones en el DOM = empleados reales + 1 automatización (${sumEmp})`);
@@ -58,16 +58,16 @@ async function clickProjected(p, id) {
   const deskTid = await p.locator('[data-testid^="iso-desk-"]').first().getAttribute("data-testid"); const deskId = deskTid.replace("iso-desk-", "");
   let pos = await clickProjected(p, deskId); await p.mouse.click(pos.x, pos.y); await p.waitForSelector("[data-testid=panel-desk]", { timeout: 5000 });
   const pd = await p.locator("[data-testid=panel-desk]").innerText();
-  check(/Skill asignada/.test(pd) && /Activo|En pausa/.test(pd), "5 · clic en empleado (3D): panel con nombre, función, departamento, skill y estado");
+  check(/Lo que sabe hacer/.test(pd) && /Listo para trabajar|En pausa/.test(pd), "5 · clic en empleado (3D): panel con nombre, función, departamento, skill y estado");
   await shot(p, "05-clic-empleado-3d");
-  check(await p.locator("[data-testid=panel-desk] a").count() === 3, "5 · accesos rápidos: Abrir ficha, Ver skill y Editar");
+  check(await p.locator("[data-testid=desk-actions] a").count() === 4, "5 · accesos rápidos: Darle una tarea, Enseñarle, Ver resultados y Abrir su ficha");
 
   // 6) Clic en departamento
   const zoneTid = await p.locator('[data-testid^="iso-zone-"]').nth(1).getAttribute("data-testid"); const zoneId = zoneTid.replace("iso-zone-", "");
   pos = await clickProjected(p, zoneId); await p.mouse.click(pos.x, pos.y);
   await p.waitForSelector("[data-testid=panel-zone]", { timeout: 5000 });
   const pz = await p.locator("[data-testid=panel-zone]").innerText();
-  check(/Empleados/.test(pz) && /Servicios vinculados/.test(pz) && /Listo|Requiere configuración|Sin empleados/.test(pz), "6 · clic en departamento (3D): nombre, empleados, servicios vinculados y estado de configuración");
+  check(/Quiénes trabajan aquí/.test(pz) && /Servicios que le das/.test(pz) && /Listo|Falta configurar|Todavía no hay empleados/.test(pz), "6 · clic en departamento (3D): nombre, empleados, servicios vinculados y estado de configuración");
   await shot(p, "06-clic-departamento-3d");
 
   // Interacción de cámara: rotar y zoom cambian la vista
@@ -75,7 +75,7 @@ async function clickProjected(p, id) {
   await p.mouse.down(); await p.mouse.move(820, 430, { steps: 8 }); await p.mouse.up(); await p.mouse.wheel(0, -400); await p.waitForTimeout(700);
   const after = await p.screenshot({ clip: { x: 200, y: 250, width: 500, height: 300 } });
   check(Buffer.compare(before, after) !== 0, "   rotar + zoom con el mouse modifican la cámara");
-  await p.locator("text=Restablecer cámara").click(); await p.waitForSelector("[data-testid=office-agency][data-mode='3d']", { timeout: 20000 }); ok("   «Restablecer cámara» funciona");
+  await p.locator("text=Volver a la vista inicial").click(); await p.waitForSelector("[data-testid=office-agency][data-mode='3d']", { timeout: 20000 }); ok("   «Restablecer cámara» funciona");
 
   // Alternar 2D ↔ 3D
   await p.locator("button", { hasText: "Vista 2D" }).click(); await p.waitForTimeout(400);
@@ -83,6 +83,11 @@ async function clickProjected(p, id) {
   await shot(p, "10-vista-2d-isometrica");
   await p.locator("button", { hasText: "Vista 3D" }).click(); await p.waitForSelector("[data-testid=office-agency][data-mode='3d']", { timeout: 20000 }); ok("   volver a vista 3D");
 
+  // Estrés: cambiar rápido de vista y de cámara no debe producir errores de JavaScript (regresión del «removeChild»)
+  await open3d(p, `/agencia/oficina-3d?cliente=${ids.multi}`); const errsAntes = errors.length;
+  for (let i = 0; i < 8; i++) { await p.locator("button", { hasText: "Vista 2D" }).click(); await p.locator("button", { hasText: "Vista 3D" }).click(); await p.locator("button", { hasText: "Lista" }).click(); await p.locator("button", { hasText: "Vista 3D" }).click(); if (i % 2) await p.locator("text=Volver a la vista inicial").click().catch(() => {}); }
+  await p.waitForSelector("[data-testid=office-agency][data-mode='3d']", { timeout: 30000 }); await p.waitForTimeout(800);
+  check(errors.length === errsAntes, "estrés: 8 ciclos rápidos 3D↔2D↔Lista y cámara sin errores de JavaScript (" + (errors.length - errsAntes) + ")");
   // 8) Escritorio
   await open3d(p, `/agencia/oficina-3d?cliente=${ids.multi}`); await p.evaluate(() => window.scrollTo(0, 0)); await shot(p, "08-escritorio-1440");
 
@@ -94,24 +99,24 @@ async function clickProjected(p, id) {
   await shot(p, "11-agencia-todos-los-clientes");
   { const did = (await p.locator('[data-testid^="iso-desk-"]').first().getAttribute("data-testid")).replace("iso-desk-", ""); const pp = await clickProjected(p, did); await p.mouse.click(pp.x, pp.y); await p.waitForSelector("[data-testid=panel-desk]");
     check(await p.locator("[data-testid=panel-desk] form button").count() === 1, "   escena de agencia: clic en empleado ofrece abrir la oficina de SU cliente (sin enlaces cruzados)"); }
-  await p.goto(base + "/agencia"); check(await p.locator("text=Visualiza tu Oficina 3D").count() > 0 && await p.locator("svg[aria-label='Miniatura de tu agencia']").count() === 1, "   panel de agencia: tarjeta «Visualiza tu Oficina 3D» con miniatura");
+  await p.goto(base + "/agencia"); check(await p.locator("text=Ver mi oficina").count() > 0 && await p.locator("svg[aria-label='Mapa de tu oficina']").count() === 1, "   panel de agencia: tarjeta «Visualiza tu Oficina 3D» con miniatura");
 
   // Oficina del cliente (agencia entra) + panel normal intacto
-  await p.goto(base + "/agencia/clientes"); await p.locator("tr", { hasText: "Multiárea" }).locator("button").click(); await p.waitForURL("**/oficina");
-  check(await p.locator("text=Visualiza tu Oficina 3D").count() > 0, "   oficina del cliente: tarjeta en el panel de dirección");
+  await p.goto(base + "/agencia/clientes"); await p.locator("[data-testid^=client-]", { hasText: "Multiárea" }).locator("button", { hasText: "Abrir su oficina" }).click(); await p.waitForURL("**/oficina");
+  check(await p.locator("text=Ver mi oficina").count() > 0, "   oficina del cliente: tarjeta en «Mi oficina»");
   await p.goto(base + "/oficina-3d"); await p.waitForSelector("[data-testid=office][data-mode='3d']", { timeout: 30000 }); await p.waitForTimeout(800); await shot(p, "12-oficina-cliente-3d");
   check(/Agencia Demo Nova/.test(await p.locator("nav .logo").innerText()), "   marca de la agencia visible en la oficina del cliente");
-  await p.goto(base + "/departamentos"); check(await p.locator("h1", { hasText: "Mis departamentos" }).count() === 1, "   el panel normal (Mis departamentos) sigue funcionando");
+  await p.goto(base + "/departamentos"); check(await p.locator("h1", { hasText: "Mis empleados" }).count() === 1, "   el panel normal (Mis empleados) sigue funcionando");
 
   // Asistente: paso 4
-  await p.goto(base + "/construir?paso=4"); await p.waitForSelector("[data-testid=office-wizard][data-mode='3d']", { timeout: 30000 }); check(await p.locator("h2", { hasText: "Visualiza tu Oficina 3D" }).count() === 1, "   fin del asistente (paso 4): sección «Visualiza tu Oficina 3D»");
+  await p.goto(base + "/construir?paso=4"); await p.waitForURL(/oficina-3d/); await p.waitForSelector("[data-testid=office][data-mode='3d']", { timeout: 30000 }); ok("   la ruta antigua del asistente lleva a «Ver mi oficina»");
   await p.waitForTimeout(700); await shot(p, "13-asistente-paso-4");
-  await p.goto(base + "/construir?paso=3"); check(await p.locator("text=Visualiza tu Oficina 3D →").count() === 1, "   paso 3: aviso con acceso directo a la vista 3D");
+  await p.goto(base + "/agregar-empleado"); check(await p.locator("h1", { hasText: "Agregar empleado" }).count() === 1, "   «Agregar empleado» abre la galería");
 
   // 7) Móvil (iPhone 13)
   const mctx = await b.newContext({ ...devices["iPhone 13"] }); const m = await mctx.newPage();
   await login(m, "ana@demo.test", "clave-muy-larga-1");
-  await m.goto(base + `/agencia/oficina-3d?cliente=${ids.multi}`); await m.waitForSelector("[data-testid=office-agency][data-mode='3d']", { timeout: 40000 }); await m.waitForTimeout(900);
+  await m.goto(base + `/agencia/oficina-3d?cliente=${ids.multi}`); await m.waitForSelector("[data-testid=office-agency][data-mode='3d']", { timeout: 40000 }); await m.waitForTimeout(900); if (await m.locator("[data-testid=guide-skip]").isVisible().catch(() => false)) await m.click("[data-testid=guide-skip]"); // la guía de bienvenida se omite como lo haría una persona
   check(await m.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "7 · móvil: sin scroll horizontal");
   const cw = await m.locator("canvas").evaluate((c) => c.getBoundingClientRect().width); check(cw <= 390, `7 · móvil: canvas ${Math.round(cw)}px ≤ 390`);
   await m.evaluate(() => document.querySelector('[data-testid$="-stage"]').scrollIntoView({ block: "center" })); await m.waitForTimeout(500);
@@ -150,7 +155,7 @@ async function clickProjected(p, id) {
   const r = await c.goto(base + "/agencia/oficina-3d"); check(/oficina|login/.test(c.url()), "   usuario cliente: no entra a la vista de agencia");
   await cctx.close();
 
-  check(errors.length === 0, "   sin errores de JavaScript en la página (" + errors.length + ")"); if (errors.length) console.log(errors.slice(0, 3));
+  if (errors.length) console.log("   ERRORES JS:", JSON.stringify(errors.slice(0, 3))); check(errors.length === 0, "   sin errores de JavaScript en la página (" + errors.length + ")");
   await b.close();
   console.log(failed ? `\n${failed} FALLO(S)` : "\nTODO OK"); process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error("FALLÓ", e.message); process.exit(1); });

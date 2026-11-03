@@ -51,7 +51,7 @@ const last = () => sent.at(-1)?.text ?? "";
   check((await p.locator("text=Investiga cinco competidores").count()) > 0, "historial de tareas iniciadas por mensajes");
   await p.screenshot({ path: `${OUT}/02-vinculaciones-e-historial.png`, fullPage: true });
   // 10) revocación desde la app
-  await p.locator("button", { hasText: "Desconectar y revocar acceso" }).first().click(); await p.waitForSelector("text=Acceso revocado");
+  await p.locator("button", { hasText: "Desconectar este celular" }).first().click(); await p.waitForSelector("text=Acceso revocado");
   sent.length = 0; await post(upd(4242, "mis clientes")); await wait(() => sent.length >= 1);
   check(/no está vinculado/.test(last()) && !/Alquimia/.test(last()), "tras revocar, el chat vuelve a ser desconocido (sin acceso)");
   await p.screenshot({ path: `${OUT}/03-revocado.png` });
