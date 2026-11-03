@@ -1,6 +1,6 @@
 # Reporte de pruebas (2026-11-03)
 
-`npm run check` (actualizado con el modelo de agencias): tipos OK · **128/128 pruebas** (25 del MVP en `tests/core.test.ts` + 18 de agencias en `tests/agency.test.ts` + 3 de leads en `tests/leads.test.ts`, PGlite = Postgres real embebido) · escaneo de secretos limpio · `npm audit --omit=dev`: 0 vulnerabilidades · `next build` OK.
+`npm run check` (actualizado con el modelo de agencias): tipos OK · **151/151 pruebas** (25 del MVP en `tests/core.test.ts` + 18 de agencias en `tests/agency.test.ts` + 3 de leads en `tests/leads.test.ts`, PGlite = Postgres real embebido) · escaneo de secretos limpio · `npm audit --omit=dev`: 0 vulnerabilidades · `next build` OK.
 Además, una prueba de humo en navegador (Playwright, servidor de producción): registro → perfil → contratar → ficha → tarea → skill v2 → conexiones → vista móvil sin scroll horizontal.
 
 **Importante:** las pruebas usan un proveedor de IA y un adaptador Composio **simulados** (`tests/helpers.ts`, no existen en la app). Prueban la lógica del producto, **no** que Claude ni Composio respondan.
@@ -79,3 +79,9 @@ Además: webhooks (401 sin/mal secreto, firma alterada, verificación GET, grupo
 
 ### Pendiente / requiere configuración
 Probar un envío y recepción REALES (credenciales de bot de Telegram; cuenta Meta + número + token + plantilla aprobada para WhatsApp) y contrastar el formato de las APIs con su documentación vigente · costos de WhatsApp por conversación (verificar tarifa) · interpretación con IA del lenguaje natural · voz con transcripción y archivos (solo validación preparada) · bots/números propios por agencia · envío del resultado como documento · cola con servicio de trabajos dedicado (hoy: BD + `after()` + cron) · limitación por IP en webhooks.
+
+
+## Rediseño de experiencia (2026-11-03)
+
+`npm run check`: **151/151 pruebas** (128 previas + 23 en `tests/redesign.test.ts`: lenguaje sencillo, «Enseña a tu empleado», tarjetas y explicaciones de los 41 empleados, asistente por reglas, estados reales de las aplicaciones, práctica con datos inventados, los 6 pasos del asistente con base real, la oficina de práctica fuera de los límites del plan y su aislamiento entre agencias). Tipos limpios, sin secretos, 0 vulnerabilidades.
+**Baterías de navegador (todas ✓ con la versión final):** `redesign.cjs` (10 escenarios + landing + guía + asistente + móvil + sin 3D + sin variables internas, 0 errores JS) · `agency_flow.cjs` (23 comprobaciones: flujo y aislamiento entre agencias) · `office3d.cjs` (incluye prueba de estrés de cambio de vista) · `messaging.cjs`. Las baterías antiguas se actualizaron a los textos nuevos. Detalle y números: [REDISENO_REPORTE.md](REDISENO_REPORTE.md).

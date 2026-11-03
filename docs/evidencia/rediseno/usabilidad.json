@@ -1,0 +1,84 @@
+{
+ "nota": "Medido por automatización (Playwright). NO son pruebas con personas.",
+ "palabrasLanding": 365,
+ "escenarios": [
+  {
+   "escenario": "1 · Crear una agencia",
+   "acciones": 5,
+   "segundos": 1,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "2 · Elegir servicios",
+   "acciones": 4,
+   "segundos": 1.5,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "3 · Contratar empleados",
+   "acciones": 1,
+   "segundos": 0.7,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "4 · Personalizar identidad",
+   "acciones": 3,
+   "segundos": 0.7,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "5 · Conocer la oficina",
+   "acciones": 1,
+   "segundos": 2.5,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "6 · Primera prueba (datos inventados)",
+   "acciones": 2,
+   "segundos": 0.8,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "5b · Asistente guiado",
+   "acciones": 4,
+   "segundos": 1.7,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "5 · Crear empresa cliente",
+   "acciones": 3,
+   "segundos": 0.9,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "6 · Enseñar a un empleado",
+   "acciones": 12,
+   "segundos": 2.1,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "7 · Ver la oficina",
+   "acciones": 2,
+   "segundos": 2.8,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "8 · Asignar una tarea",
+   "acciones": 5,
+   "segundos": 2,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "9 · Revisar resultados",
+   "acciones": 1,
+   "segundos": 1.1,
+   "resultado": "completado"
+  },
+  {
+   "escenario": "10 · Conectar una aplicación",
+   "acciones": 5,
+   "segundos": 1.6,
+   "resultado": "completado"
+  }
+ ]
+}

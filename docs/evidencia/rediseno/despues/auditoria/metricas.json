@@ -1,0 +1,386 @@
+[
+ {
+  "pantalla": "01-landing",
+  "url": "/",
+  "palabras": 365,
+  "campos": 6,
+  "botones": 4,
+  "enlaces": 6,
+  "jerga": {
+   "ia": 2
+  },
+  "jergaTotal": 2,
+  "scrollX": false,
+  "alto": 2930
+ },
+ {
+  "pantalla": "02-registro",
+  "url": "/registro",
+  "palabras": 56,
+  "campos": 4,
+  "botones": 1,
+  "enlaces": 1,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 828
+ },
+ {
+  "pantalla": "03-login",
+  "url": "/login",
+  "palabras": 13,
+  "campos": 2,
+  "botones": 1,
+  "enlaces": 1,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "10-panel-agencia",
+  "url": "/agencia",
+  "palabras": 307,
+  "campos": 0,
+  "botones": 8,
+  "enlaces": 25,
+  "jerga": {
+   "usd|us\\$": 2
+  },
+  "jergaTotal": 2,
+  "scrollX": false,
+  "alto": 1332
+ },
+ {
+  "pantalla": "11-clientes",
+  "url": "/agencia/clientes",
+  "palabras": 203,
+  "campos": 1,
+  "botones": 13,
+  "enlaces": 18,
+  "jerga": {
+   "usd|us\\$": 6
+  },
+  "jergaTotal": 6,
+  "scrollX": false,
+  "alto": 803
+ },
+ {
+  "pantalla": "12-cliente-detalle",
+  "url": "/agencia/clientes/8238b759-81a8-4614-b94b-016254666fee",
+  "palabras": 276,
+  "campos": 2,
+  "botones": 28,
+  "enlaces": 14,
+  "jerga": {
+   "usd|us\\$": 3
+  },
+  "jergaTotal": 3,
+  "scrollX": false,
+  "alto": 2019
+ },
+ {
+  "pantalla": "13-servicios",
+  "url": "/agencia/servicios",
+  "palabras": 264,
+  "campos": 3,
+  "botones": 14,
+  "enlaces": 12,
+  "jerga": {
+   "usd|us\\$": 3
+  },
+  "jergaTotal": 3,
+  "scrollX": false,
+  "alto": 972
+ },
+ {
+  "pantalla": "14-skills-agencia",
+  "url": "/agencia/skills?plantilla=analista-meta-ads",
+  "palabras": 393,
+  "campos": 5,
+  "botones": 9,
+  "enlaces": 53,
+  "jerga": {
+   "agentes?": 1
+  },
+  "jergaTotal": 1,
+  "scrollX": false,
+  "alto": 1584
+ },
+ {
+  "pantalla": "15-propuestas",
+  "url": "/agencia/propuestas",
+  "palabras": 168,
+  "campos": 10,
+  "botones": 4,
+  "enlaces": 12,
+  "jerga": {
+   "usd|us\\$": 3
+  },
+  "jergaTotal": 3,
+  "scrollX": false,
+  "alto": 969
+ },
+ {
+  "pantalla": "16-identidad",
+  "url": "/agencia/identidad",
+  "palabras": 162,
+  "campos": 12,
+  "botones": 4,
+  "enlaces": 12,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 1062
+ },
+ {
+  "pantalla": "17-soporte",
+  "url": "/agencia/soporte",
+  "palabras": 132,
+  "campos": 0,
+  "botones": 3,
+  "enlaces": 13,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "18-oficina-3d",
+  "url": "/agencia/oficina-3d?cliente=8238b759-81a8-4614-b94b-016254666fee",
+  "palabras": 228,
+  "campos": 0,
+  "botones": 15,
+  "enlaces": 16,
+  "jerga": {
+   "ia": 1
+  },
+  "jergaTotal": 1,
+  "scrollX": false,
+  "alto": 815
+ },
+ {
+  "pantalla": "19-celular",
+  "url": "/celular",
+  "palabras": 391,
+  "campos": 7,
+  "botones": 3,
+  "enlaces": 1,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 2384
+ },
+ {
+  "pantalla": "33-asistente",
+  "url": "/agencia/asistente",
+  "palabras": 143,
+  "campos": 1,
+  "botones": 4,
+  "enlaces": 16,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "34-agregar-empleado-agencia",
+  "url": "/agencia/contratar",
+  "palabras": 342,
+  "campos": 1,
+  "botones": 7,
+  "enlaces": 21,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 1010
+ },
+ {
+  "pantalla": "35-crear-tarea",
+  "url": "/agencia/tarea",
+  "palabras": 213,
+  "campos": 2,
+  "botones": 4,
+  "enlaces": 13,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "36-conexiones-agencia",
+  "url": "/agencia/conexiones",
+  "palabras": 172,
+  "campos": 0,
+  "botones": 7,
+  "enlaces": 12,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "20-oficina-cliente",
+  "url": "/oficina",
+  "palabras": 214,
+  "campos": 1,
+  "botones": 8,
+  "enlaces": 18,
+  "jerga": {
+   "usd|us\\$": 2
+  },
+  "jergaTotal": 2,
+  "scrollX": false,
+  "alto": 886
+ },
+ {
+  "pantalla": "21-departamentos",
+  "url": "/departamentos",
+  "palabras": 326,
+  "campos": 1,
+  "botones": 5,
+  "enlaces": 32,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 2520
+ },
+ {
+  "pantalla": "22-ficha-empleado",
+  "url": "/empleados/e266436c-b13b-42f9-b368-7b4d45849dda",
+  "palabras": 167,
+  "campos": 2,
+  "botones": 5,
+  "enlaces": 15,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 1151
+ },
+ {
+  "pantalla": "23-editar-skill",
+  "url": "/empleados/e266436c-b13b-42f9-b368-7b4d45849dda/ensenar",
+  "palabras": 219,
+  "campos": 6,
+  "botones": 10,
+  "enlaces": 13,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 1494
+ },
+ {
+  "pantalla": "24-editar-skill-avanzado",
+  "url": "/empleados/e266436c-b13b-42f9-b368-7b4d45849dda/skill?modo=avanzado",
+  "palabras": 207,
+  "campos": 15,
+  "botones": 6,
+  "enlaces": 16,
+  "jerga": {
+   "skills?": 1,
+   "plantillas?": 1,
+   "versi[oó]n": 2
+  },
+  "jergaTotal": 4,
+  "scrollX": false,
+  "alto": 2588
+ },
+ {
+  "pantalla": "25-conexiones",
+  "url": "/conexiones",
+  "palabras": 494,
+  "campos": 1,
+  "botones": 12,
+  "enlaces": 20,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 2177
+ },
+ {
+  "pantalla": "26-construir-paso1",
+  "url": "/empezar?paso=1",
+  "palabras": 57,
+  "campos": 1,
+  "botones": 1,
+  "enlaces": 1,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "27-construir-paso3",
+  "url": "/agregar-empleado",
+  "palabras": 259,
+  "campos": 0,
+  "botones": 5,
+  "enlaces": 10,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 1008
+ },
+ {
+  "pantalla": "28-conocimiento",
+  "url": "/conocimiento",
+  "palabras": 228,
+  "campos": 24,
+  "botones": 5,
+  "enlaces": 11,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 1239
+ },
+ {
+  "pantalla": "29-automatizaciones",
+  "url": "/automatizaciones",
+  "palabras": 268,
+  "campos": 12,
+  "botones": 6,
+  "enlaces": 11,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 1254
+ },
+ {
+  "pantalla": "30-actividad",
+  "url": "/actividad",
+  "palabras": 113,
+  "campos": 1,
+  "botones": 5,
+  "enlaces": 12,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "31-aprobaciones",
+  "url": "/aprobaciones",
+  "palabras": 105,
+  "campos": 1,
+  "botones": 4,
+  "enlaces": 11,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "32-ayuda",
+  "url": "/ayuda",
+  "palabras": 203,
+  "campos": 0,
+  "botones": 1,
+  "enlaces": 2,
+  "jerga": {
+   "composio": 1
+  },
+  "jergaTotal": 1,
+  "scrollX": false,
+  "alto": 1471
+ }
+]
