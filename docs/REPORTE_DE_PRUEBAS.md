@@ -89,3 +89,8 @@ Probar un envío y recepción REALES (credenciales de bot de Telegram; cuenta Me
 
 ## Piloto Nova AI → Verde Vivo (2026-11-03)
 22 pruebas nuevas (`tests/pilot.test.ts`): cálculo de inventario (3 bajo mínimo, 66 unidades, borde «en el mínimo»), validación del CSV, aislamiento por empresa, herramientas internas (el servidor recalcula las cantidades), cadena completa por el programador (3 tareas/3 niveles), aprobar/rechazar/caducada/sin permiso, sin productos bajo mínimo, sin presupuesto, sin IA, delegación entre empresas, aprobación por Telegram simulado y registro cerrado. Además `scripts/pilot/acceptance.ts` (fases a y telegram) y `pilot_ui.cjs` (20 pruebas de navegador ✓). **Modelo de IA simulado; Claude, Telegram y Composio reales: no verificados.** Detalle: [PILOTO_VERDE_VIVO_REPORTE.md](PILOTO_VERDE_VIVO_REPORTE.md).
+
+## Sistema comercial (2026-11-03)
+- `npm run check`: **190/190** pruebas (17 nuevas en `tests/commercial.test.ts`), tipos limpios, 0 patrones de secretos.
+- E2E en navegador `scripts/e2e/commercial.cjs`: **36/36** (evidencia en `docs/comercial/evidencia/`). Detalle y límites en `docs/SISTEMA_COMERCIAL.md`.
+- Pasarela de pago: **no probada** (no existe; solo una pasarela falsa en pruebas unitarias para validar el contrato).
