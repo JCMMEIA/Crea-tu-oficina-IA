@@ -1,5 +1,7 @@
 # Roadmap hacia SaaS comercial
 
+> Actualizado 2026-11-03 por el giro B2B2B: el cliente es la **agencia**. Hecho: modelo Agencia→Cliente, catálogo, propuestas, landing. Próximo: ver los puntos 1, 2 y «Pendiente» de [ARQUITECTURA_AGENCIAS.md](ARQUITECTURA_AGENCIAS.md) (administrador de plataforma, invitaciones, RLS, facturación con autorización, dominios propios, licencia de reventa).
+
 1. **Desbloqueo (José):** claves de Claude y Composio → verificar ejecución real y una integración real (Meta Ads o Sheets) con cuenta de prueba.
 2. **Fase 2:** verificar adaptador Composio; herramientas para Instagram/Notion/Slack/Drive; MCP; WhatsApp oficial.
 3. **Fase 3:** chat con agentes, retorno hijo→padre, comparador de versiones, confirmación de cambios propuestos por IA, plantilla del flujo de anuncios de 9 pasos.
