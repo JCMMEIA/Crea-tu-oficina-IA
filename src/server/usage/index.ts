@@ -17,6 +17,12 @@ export async function assertWithinLimits(db: Db, a: { companyId: string; employe
   const spent = await monthSpend(db, a.companyId);
   if (spent + a.maxCostUsd > Number(c.monthly_budget_usd))
     throw new LimitError(`Presupuesto mensual de IA agotado (gastado ${spent.toFixed(4)} de ${Number(c.monthly_budget_usd).toFixed(2)} USD).`, "budget");
+  // Tope de la agencia: suma de todos sus clientes en el mes.
+  const ag = (await db.query(`SELECT a.id, a.monthly_budget_usd FROM agencies a JOIN companies c ON c.agency_id=a.id WHERE c.id=$1`, [a.companyId]))[0];
+  if (ag) {
+    const s = await db.query<{ s: string }>("SELECT coalesce(sum(u.cost_usd),0) s FROM usage_events u JOIN companies c ON c.id=u.company_id WHERE c.agency_id=$1 AND u.created_at >= date_trunc('month', now())", [ag.id]);
+    if (Number(s[0].s) + a.maxCostUsd > Number(ag.monthly_budget_usd)) throw new LimitError("Presupuesto mensual de IA de la agencia agotado.", "agency_budget");
+  }
   const hour = await db.query<{ n: string }>("SELECT count(*) n FROM usage_events WHERE company_id=$1 AND created_at > now() - interval '1 hour'", [a.companyId]);
   if (Number(hour[0].n) >= c.max_runs_per_hour) throw new LimitError("Límite de ejecuciones por hora de la empresa alcanzado.", "rate_company");
   const e = (await db.query("SELECT max_runs_per_day FROM employees WHERE id=$1 AND company_id=$2", [a.employeeId, a.companyId]))[0];

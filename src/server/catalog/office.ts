@@ -3,6 +3,8 @@ import { Db, Row, newId } from "../db";
 import { Actor, assertCan, audit } from "../auth";
 import { DEPARTMENTS, EMPLOYEES, getDepartment, getTemplate } from "./data";
 import { defaultSkill } from "../skills";
+import { skillForHire } from "../agency";
+import { planOf } from "../agency/plans";
 
 export const profileSchema = z.object({
   sector: z.string().max(200).optional(), products: z.string().max(2000).optional(), clients: z.string().max(1000).optional(),
@@ -34,20 +36,28 @@ export async function createCustomDepartment(db: Db, actor: Actor, name: string)
   return ensureDepartment(db, actor, "custom-" + newId().slice(0, 8), clean);
 }
 
+/** Límite de empleados según el plan de la agencia dueña de la empresa. */
+async function assertEmployeeCapacity(db: Db, companyId: string) {
+  const r = (await db.query("SELECT a.plan, (SELECT count(*) FROM employees e JOIN companies c2 ON c2.id=e.company_id WHERE c2.agency_id=a.id) n FROM companies c JOIN agencies a ON a.id=c.agency_id WHERE c.id=$1", [companyId]))[0];
+  if (r && Number(r.n) >= planOf(r.plan).maxEmployees) throw new Error(`Tu plan ${planOf(r.plan).label} permite hasta ${planOf(r.plan).maxEmployees} empleados de IA en total.`);
+}
+
 /** Contrata copiando la plantilla (inmutable) a la empresa: la edición posterior nunca toca la plantilla. */
 export async function hireFromTemplate(db: Db, actor: Actor, templateKey: string, name?: string): Promise<string> {
   assertCan(actor, "employees:manage");
   const tpl = getTemplate(templateKey);
   if (!tpl) throw new Error("Plantilla de empleado desconocida.");
+  await assertEmployeeCapacity(db, actor.companyId);
   const depId = await ensureDepartment(db, actor, tpl.department);
   const id = newId();
+  const skill = (await skillForHire(db, actor.companyId, tpl.key)) ?? defaultSkill(tpl); // skill de la agencia si existe
   const perms: Record<string, string> = {};
   for (const c of tpl.connections) perms[c.toolkit] = "read"; // solo lectura al inicio
   await db.tx(async (t) => {
     await t.query(`INSERT INTO employees(id,company_id,department_id,template_key,name,role_title,description,permissions)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, [id, actor.companyId, depId, tpl.key, name?.trim() || tpl.name, tpl.name, tpl.mission, JSON.stringify(perms)]);
     await t.query("INSERT INTO skill_versions(id,company_id,employee_id,version,spec,note,author) VALUES($1,$2,$3,1,$4,'Skill inicial de la plantilla',$5)",
-      [newId(), actor.companyId, id, JSON.stringify(defaultSkill(tpl)), actor.email]);
+      [newId(), actor.companyId, id, JSON.stringify(skill), actor.email]);
   });
   await audit(db, { companyId: actor.companyId, userId: actor.userId }, "employee.hire", id, { template: tpl.key });
   return id;

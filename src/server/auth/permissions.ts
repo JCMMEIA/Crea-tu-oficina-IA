@@ -11,7 +11,23 @@ const matrix: Record<Role, Permission[]> = {
 };
 
 /** Quien actúa: siempre pertenece a UNA empresa. Todo servicio privado lo recibe. */
-export interface Actor { userId: string; companyId: string; role: Role; email: string }
+export interface Actor { userId: string; companyId: string; role: Role; email: string; agencyId?: string }
+
+export type AgencyRole = "agency_owner" | "agency_admin" | "agency_member";
+export type AgencyPermission = "agency:read" | "agency:clients" | "agency:catalog" | "agency:brand" | "agency:proposals" | "agency:manage";
+const agencyMatrix: Record<AgencyRole, AgencyPermission[]> = {
+  agency_owner: ["agency:read", "agency:clients", "agency:catalog", "agency:brand", "agency:proposals", "agency:manage"],
+  agency_admin: ["agency:read", "agency:clients", "agency:catalog", "agency:brand", "agency:proposals"],
+  agency_member: ["agency:read"],
+};
+/** Quien actúa a nivel agencia. Nunca implica acceso a otra agencia. */
+export interface AgencyActor { userId: string; email: string; agencyId: string; agencyRole: AgencyRole }
+export const agencyCan = (a: AgencyActor | null | undefined, p: AgencyPermission) => !!a && agencyMatrix[a.agencyRole].includes(p);
+export function assertAgencyCan(a: AgencyActor | null | undefined, p: AgencyPermission): asserts a is AgencyActor {
+  if (!agencyCan(a, p)) throw new AuthorizationError();
+}
+/** Rol efectivo dentro de la oficina de un cliente cuando opera la agencia. */
+export const clientRoleFor = (r: AgencyRole): Role => (r === "agency_owner" ? "owner" : r === "agency_admin" ? "admin" : "member");
 
 export class AuthorizationError extends Error {
   constructor(msg = "No tienes permiso para esta acción.") { super(msg); this.name = "AuthorizationError"; }

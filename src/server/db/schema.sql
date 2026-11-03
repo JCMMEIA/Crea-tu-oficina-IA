@@ -81,3 +81,54 @@ CREATE TABLE IF NOT EXISTS usage_events (
 CREATE TABLE IF NOT EXISTS audit_log (
   id bigserial PRIMARY KEY, company_id text, actor_user_id text, action text NOT NULL, target text,
   detail jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now());
+
+-- === Capa Agencia (marca blanca) ===
+CREATE TABLE IF NOT EXISTS agencies (
+  id text PRIMARY KEY, name text NOT NULL, specialty text NOT NULL DEFAULT '',
+  brand jsonb NOT NULL DEFAULT '{}'::jsonb, plan text NOT NULL DEFAULT 'prueba',
+  monthly_budget_usd numeric NOT NULL DEFAULT 20,
+  billing_status text NOT NULL DEFAULT 'sin_facturacion', external_customer_id text,
+  created_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS agency_id text REFERENCES agencies(id) ON DELETE CASCADE;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS industry text NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS companies_agency_idx ON companies(agency_id);
+CREATE TABLE IF NOT EXISTS agency_members (
+  agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role text NOT NULL CHECK (role IN ('agency_owner','agency_admin','agency_member')),
+  PRIMARY KEY (agency_id, user_id));
+CREATE TABLE IF NOT EXISTS agency_skill_templates (
+  agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE, template_key text NOT NULL,
+  spec jsonb NOT NULL, note text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (agency_id, template_key));
+CREATE TABLE IF NOT EXISTS agency_services (
+  id text PRIMARY KEY, agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  name text NOT NULL, description text NOT NULL DEFAULT '', industry text NOT NULL DEFAULT '',
+  template_keys jsonb NOT NULL DEFAULT '[]'::jsonb, price_usd numeric NOT NULL DEFAULT 0,
+  price_unit text NOT NULL DEFAULT 'mes' CHECK (price_unit IN ('mes','proyecto')),
+  est_tasks_per_month int NOT NULL DEFAULT 20,
+  status text NOT NULL DEFAULT 'borrador' CHECK (status IN ('borrador','publicado')),
+  created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS client_services (
+  id text PRIMARY KEY, agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  service_id text NOT NULL REFERENCES agency_services(id) ON DELETE CASCADE,
+  employee_ids jsonb NOT NULL DEFAULT '[]'::jsonb, created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (company_id, service_id));
+CREATE TABLE IF NOT EXISTS proposals (
+  id text PRIMARY KEY, agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  company_id text REFERENCES companies(id) ON DELETE SET NULL, client_name text NOT NULL, title text NOT NULL,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb, notes text NOT NULL DEFAULT '', total_usd numeric NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'borrador' CHECK (status IN ('borrador','enviada','aceptada','rechazada')),
+  created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS leads (
+  id text PRIMARY KEY, email text NOT NULL UNIQUE, name text NOT NULL DEFAULT '', stage text NOT NULL DEFAULT '',
+  message text NOT NULL DEFAULT '', consent boolean NOT NULL, utm jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now());
+
+-- Migración idempotente del MVP: cada empresa sin agencia recibe una propia; sus propietarios la dirigen.
+INSERT INTO agencies(id,name) SELECT 'ag-'||id, name FROM companies WHERE agency_id IS NULL ON CONFLICT DO NOTHING;
+UPDATE companies SET agency_id='ag-'||id WHERE agency_id IS NULL;
+INSERT INTO agency_members(agency_id,user_id,role)
+  SELECT c.agency_id, m.user_id, 'agency_owner' FROM memberships m JOIN companies c ON c.id=m.company_id WHERE m.role='owner'
+  ON CONFLICT DO NOTHING;
