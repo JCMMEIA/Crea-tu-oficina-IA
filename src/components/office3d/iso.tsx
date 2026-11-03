@@ -42,7 +42,7 @@ export function IsoSvg({ scene, selected = null, onSelect, label = "Vista isomé
     const lab = proj(z.x - z.w / 2 + 0.1, z.z - z.d / 2 + 0.1, 0);
     items.push({ depth: z.x + z.z - 40, node: (<g key={z.id} {...clickable(() => onSelect!({ type: "zone", id: z.id }), `Departamento ${z.label}`)} data-testid={`iso-zone-${z.id}`}>
       <polygon points={P(floor)} fill={z.color} opacity={zSel ? 0.42 : 0.2} stroke={z.color} strokeWidth={zSel ? 3 : 1.4} strokeDasharray={z.status === "empty" ? "5 4" : undefined} />
-      {showLabels && <text x={lab.px + 6} y={lab.py - 6} fontSize={11} fontWeight={700} fill="currentColor">{z.icon} {z.label} · {z.desks.length}</text>}
+      {showLabels && <text x={lab.px + 6} y={lab.py - 6} fontSize={11} fontWeight={700} fill="currentColor">{z.icon} {z.label} · {z.desks.length}{z.status === "needs_setup" ? " 🔧" : z.status === "empty" ? " 🪑" : " ✓"}</text>}
       {z.desks.length === 0 && showLabels && <text x={proj(z.x, z.z).px} y={proj(z.x, z.z).py + 4} textAnchor="middle" fontSize={9} fill="currentColor" opacity={0.55}>vacío</text>}
     </g>) });
     for (const d of z.desks) {

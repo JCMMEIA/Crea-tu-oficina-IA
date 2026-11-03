@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { agencySignupAction } from "../agency_actions";
-import { Flash } from "@/lib/ui";
+import { Flash, Help } from "@/lib/ui";
+export const metadata = { title: "Crea tu negocio — Crea tu Oficina IA" };
 export default async function Registro({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const sp = await searchParams;
-  return (<div className="auth"><h1>Crea tu agencia de IA</h1><p className="muted">Empieza con 2 clientes de prueba. Sin tarjeta: no hay cobros.</p><Flash sp={sp} />
+  return (<div className="auth"><h1>Vamos a crear tu negocio</h1><p className="lead">Son 4 datos y listo. Después te guiamos paso a paso. No necesitas tarjeta ni saber de tecnología.</p><Flash sp={sp} />
     <form action={agencySignupAction} className="card">
-      <label htmlFor="a">Nombre de tu agencia</label><input id="a" name="agencyName" required />
-      <label htmlFor="s">Especialidad</label><input id="s" name="specialty" placeholder="Ej. Marketing con IA para tiendas online" />
+      <label htmlFor="a">¿Cómo se llamará tu negocio?</label><Help>Puedes cambiarlo después.</Help><input id="a" name="agencyName" required autoFocus />
       <label htmlFor="n">Tu nombre</label><input id="n" name="name" required autoComplete="name" />
-      <label htmlFor="e">Correo</label><input id="e" name="email" type="email" required autoComplete="email" />
-      <label htmlFor="p">Contraseña (mínimo 10 caracteres)</label><input id="p" name="password" type="password" minLength={10} required autoComplete="new-password" />
-      <p><button>Crear mi agencia</button></p></form>
+      <label htmlFor="e">Tu correo</label><Help>Con él entrarás cada vez.</Help><input id="e" name="email" type="email" required autoComplete="email" inputMode="email" />
+      <label htmlFor="p">Elige una contraseña</label><Help>Al menos 10 letras o números.</Help><input id="p" name="password" type="password" minLength={10} required autoComplete="new-password" />
+      <p><button className="big" data-testid="signup">Crear mi negocio</button></p></form>
     <p className="muted">¿Ya tienes cuenta? <Link href="/login">Entrar</Link></p></div>);
 }

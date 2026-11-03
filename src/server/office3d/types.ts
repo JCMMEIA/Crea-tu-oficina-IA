@@ -8,6 +8,7 @@ export type ZoneStatus = "empty" | "needs_setup" | "ready";
 export interface Desk {
   id: string; label: string; roleTitle: string; departmentName: string;
   status: DeskStatus; skillName: string; skillVersion: number; skillCustomized: boolean;
+  needs: string[];                      // aplicaciones que le faltan por conectar (texto para la persona)
   x: number; z: number;                 // centro en unidades de escena
   href: string; skillHref: string;      // accesos rápidos
 }

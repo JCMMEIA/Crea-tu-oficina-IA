@@ -16,14 +16,14 @@ export const colsFor = (n: number) => (n <= 3 ? Math.max(1, n) : n <= 6 ? 3 : 4)
 
 function statusOf(z: InZone): { status: ZoneStatus; label: string; notes: string[] } {
   if (z.kind === "automation") return { status: "ready", label: "Activo", notes: z.extraNotes ?? [] };
-  if (!z.employees.length) return { status: "empty", label: z.kind === "client" ? "Sin empleados" : "Sin empleados todavía", notes: ["Contrata empleados para activar esta zona."] };
+  if (!z.employees.length) return { status: "empty", label: z.kind === "client" ? "Sin empleados" : "Todavía no hay empleados", notes: ["Agrega empleados para que esta zona cobre vida."] };
   const notes: string[] = [...(z.extraNotes ?? [])];
   const paused = z.employees.filter((e) => e.status !== "active");
-  if (paused.length) notes.push(`${paused.length} empleado(s) en pausa o inactivos.`);
+  if (paused.length) notes.push(`${paused.length} empleado(s) en pausa.`);
   const miss = [...new Set(z.employees.flatMap((e) => e.missingConnections))];
   if (miss.length) notes.push(`Falta conectar: ${miss.join(", ")}.`);
-  if (z.attention) notes.push(`${z.attention} elemento(s) requieren atención (aprobaciones o tareas fallidas).`);
-  return notes.length ? { status: "needs_setup", label: "Requiere configuración", notes } : { status: "ready", label: "Listo", notes: [] };
+  if (z.attention) notes.push(`${z.attention} cosa(s) necesitan tu atención (permisos pendientes o trabajos que no salieron).`);
+  return notes.length ? { status: "needs_setup", label: "Falta configurar", notes } : { status: "ready", label: "Listo", notes: [] };
 }
 
 const rank = (z: InZone) => { const i = ORDER.indexOf(z.key); return z.kind === "automation" ? 99 : i === -1 ? 50 : i; };
@@ -61,7 +61,7 @@ export function buildScene(input: LayoutInput): OfficeScene {
     const desks: Desk[] = s.z.employees.map((e, i) => {
       const col = i % s.cols, row = Math.floor(i / s.cols), inRow = Math.min(s.cols, s.z.employees.length - row * s.cols);
       return {
-        id: e.id, label: e.name, roleTitle: e.roleTitle, departmentName: s.z.name, status: e.status, skillName: e.skillName, skillVersion: e.skillVersion, skillCustomized: e.skillVersion > 1,
+        id: e.id, label: e.name, roleTitle: e.roleTitle, departmentName: s.z.name, status: e.status, skillName: e.skillName, skillVersion: e.skillVersion, skillCustomized: e.skillVersion > 1, needs: e.missingConnections,
         x: c.x + (col - (inRow - 1) / 2) * DESK_W, z: c.z + (row - (s.rows - 1) / 2) * DESK_D,
         href: `/empleados/${e.id}`, skillHref: `/empleados/${e.id}/skill`,
       };

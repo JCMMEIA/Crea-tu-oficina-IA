@@ -6,6 +6,7 @@ import { buildScene, InZone } from "./layout";
 import { OfficeScene, SceneBrand } from "./types";
 
 const hexOk = (c: unknown) => (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c) ? c : "#4f46e5");
+const styleOf = (b: Record<string, any> | null) => (typeof b?.style === "string" ? b.style : "moderno");
 const brandOf = (name: string, b: Record<string, any> | null): SceneBrand => ({
   name, color: hexOk(b?.primaryColor), tagline: typeof b?.tagline === "string" ? b.tagline : "",
   logo: typeof b?.logo === "string" && (b.logo.startsWith("data:image/") || b.logo.startsWith("https://")) ? b.logo : null,
@@ -34,9 +35,9 @@ export async function companyScene(db: Db, actor: Actor): Promise<OfficeScene> {
     };
   });
   // Zona de automatizaciones: solo si existen (nodos reales, no empleados).
-  if (autos.length) zones.push({ id: "automatizaciones", key: "automatizaciones", kind: "automation", name: "Automatizaciones / IA", services: [], extraNotes: autos.map((a) => `${a.name}${a.enabled ? "" : " (pausada)"}`),
+  if (autos.length) zones.push({ id: "automatizaciones", key: "automatizaciones", kind: "automation", name: "Tareas automáticas", services: [], extraNotes: autos.map((a) => `${a.name}${a.enabled ? "" : " (pausada)"}`),
     employees: autos.map((a) => ({ id: a.id, name: a.name, roleTitle: "Automatización", status: a.enabled ? "active" : "paused", skillName: "Regla programada", skillVersion: 1, missingConnections: [] })) });
-  return buildScene({ kind: "company", title: c.name, subtitle: `Oficina de IA · ${c.agency_name}`, brand: brandOf(c.agency_name, c.brand), zones });
+  return buildScene({ kind: "company", title: c.name, subtitle: `Oficina de IA · ${c.agency_name}`, brand: brandOf(c.agency_name, c.brand), zones, themeKey: styleOf(c.brand) });
 }
 
 /** Escena de la agencia: cada módulo es un cliente propio (nunca de otra agencia) con sus empleados reales. */
@@ -50,7 +51,7 @@ export async function agencyScene(db: Db, a: AgencyActor): Promise<OfficeScene> 
     id: c.id, key: "client", kind: "client", name: c.name, companyId: c.id, services: [], attention: Number(attn.find((x) => x.id === c.id)?.n ?? 0), href: `/oficina-3d`,
     employees: emps.filter((e) => e.company_id === c.id).map((e) => ({ id: e.id, name: e.name, roleTitle: e.role_title, status: e.status, skillName: (e.template_key && getTemplate(e.template_key)?.skillName) || "Skill personalizada", skillVersion: e.current_skill_version, missingConnections: [] })),
   }));
-  return buildScene({ kind: "agency", title: ag.name, subtitle: ag.specialty || "Agencia de IA", brand: brandOf(ag.name, ag.brand), zones });
+  return buildScene({ kind: "agency", title: ag.name, subtitle: ag.specialty || "Agencia de IA", brand: brandOf(ag.name, ag.brand), zones, themeKey: styleOf(ag.brand) });
 }
 
 /** Escena de un cliente visto por su agencia (pasa por el puente actAs: otra agencia ⇒ «no encontrada»). */

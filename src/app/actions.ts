@@ -6,6 +6,7 @@ import { getDb } from "@/server/db";
 import { agencyActorFromToken, login, logout, signup } from "@/server/auth";
 import { COMPANY_COOKIE, COOKIE, requireActor, setSessionCookie } from "@/lib/session";
 import { createCustomDepartment, createCustomEmployee, deleteEmployee, duplicateEmployee, hireFromTemplate, setEmployeeStatus, setPermissions, updateProfile } from "@/server/catalog/office";
+import { buildTaughtSkill } from "@/lib/teach";
 import { beginnerToSpec, getCurrentSkill, importSkill, restoreVersion, saveSkillVersion, skillSpecSchema } from "@/server/skills";
 import { createTask, decideApproval, DuplicateTaskError, retryTask, runWorkflow } from "@/server/tasks";
 import { disconnect, startConnection, testConnection } from "@/server/connectors";
@@ -58,7 +59,7 @@ export async function profileAction(f: FormData) {
 }
 export async function hireAction(f: FormData) {
   const { db, actor } = await requireActor();
-  await safe(s(f, "next") || "/construir?paso=3", async () => { await hireFromTemplate(db, actor, s(f, "template")); return "Empleado agregado a tu oficina."; });
+  await safe(s(f, "next") || "/agregar-empleado", async () => { const keys = f.getAll("empleado").map(String).concat(s(f, "template") ? [s(f, "template")] : []); if (!keys.length) throw new Error("Elige al menos un empleado."); for (const k of keys) await hireFromTemplate(db, actor, k); return keys.length === 1 ? "Empleado agregado a tu oficina." : `${keys.length} empleados agregados.`; });
 }
 export async function customDepartmentAction(f: FormData) {
   const { db, actor } = await requireActor();
@@ -75,7 +76,7 @@ export async function employeeOpAction(f: FormData) {
     if (op === "duplicate") { const n = await duplicateEmployee(db, actor, id); return redirect(`/empleados/${n}`); }
     if (op === "pause") await setEmployeeStatus(db, actor, id, "paused");
     if (op === "activate") await setEmployeeStatus(db, actor, id, "active");
-    if (op === "delete") await deleteEmployee(db, actor, id);
+    if (op === "delete") { if (f.get("confirm") !== "on") throw new Error("Marca la casilla para confirmar que quieres eliminarlo."); await deleteEmployee(db, actor, id); }
     return "Listo.";
   });
 }
@@ -84,7 +85,7 @@ export async function permissionsAction(f: FormData) {
   const id = s(f, "id");
   const perms: Record<string, string> = {};
   for (const [k, v] of f.entries()) if (k.startsWith("perm_")) perms[k.slice(5)] = String(v);
-  await safe(`/empleados/${id}`, async () => { await setPermissions(db, actor, id, perms, { maxOutputTokens: Number(s(f, "maxOutputTokens")) || undefined, maxRunsPerDay: Number(s(f, "maxRunsPerDay")) || undefined }); return "Permisos y límites guardados."; });
+  await safe(`/empleados/${id}`, async () => { await setPermissions(db, actor, id, perms, { maxOutputTokens: Number(s(f, "maxOutputTokens")) || undefined, maxRunsPerDay: Number(s(f, "maxRunsPerDay")) || undefined }); return "Listo: guardamos lo que puede hacer y sus límites."; });
 }
 
 export async function assignTaskAction(f: FormData) {
@@ -104,7 +105,7 @@ export async function assignTaskAction(f: FormData) {
 }
 export async function retryTaskAction(f: FormData) {
   const { db, actor } = await requireActor(); const id = s(f, "id");
-  await safe(`/actividad/${id}`, async () => { await retryTask(db, actor, id); await runWorkflow(db, actor, id, { provider: getProvider() }); return "Reintento ejecutado."; });
+  await safe(`/actividad/${id}`, async () => { await retryTask(db, actor, id); await runWorkflow(db, actor, id, { provider: getProvider() }); return "Lo volvimos a intentar."; });
 }
 export async function approvalAction(f: FormData) {
   const { db, actor } = await requireActor();
@@ -121,33 +122,33 @@ export async function skillSaveAction(f: FormData) {
       ? beginnerToSpec(cur, Object.fromEntries(["sells", "idealClient", "difference", "competitors", "tone", "expected", "never", "consult"].map((k) => [k, s(f, k)])))
       : skillSpecSchema.parse({ ...cur, systemPrompt: s(f, "systemPrompt"), procedures: lines("procedures"), authorizedTools: lines("authorizedTools"), knowledgeSources: lines("knowledgeSources"), outputFormat: s(f, "outputFormat"), goals: lines("goals"), metrics: lines("metrics"), actionConditions: lines("actionConditions"), collaborationRules: lines("collaborationRules"), autonomy: { requireApprovalForWrites: f.get("requireApproval") === "on", maxTaskSeconds: Number(s(f, "maxTaskSeconds")) || 120 } });
     const v = await saveSkillVersion(db, actor, id, spec, s(f, "note") || (mode === "beginner" ? "Modo principiante" : "Edición avanzada"));
-    return `Guardada como versión ${v}.`;
+    return `Listo: guardado (enseñanza n.º ${v}). Puedes volver a una anterior cuando quieras.`;
   });
 }
 export async function skillRestoreAction(f: FormData) {
   const { db, actor } = await requireActor(); const id = s(f, "id");
-  await safe(`/empleados/${id}/skill`, async () => `Restaurada como versión ${await restoreVersion(db, actor, id, Number(s(f, "version")))}.`);
+  await safe(`/empleados/${id}/skill`, async () => `Listo: volvió a una enseñanza anterior (ahora es la n.º ${await restoreVersion(db, actor, id, Number(s(f, "version")))}).`);
 }
 export async function skillImportAction(f: FormData) {
   const { db, actor } = await requireActor(); const id = s(f, "id");
-  await safe(`/empleados/${id}/skill`, async () => `Importada como versión ${await importSkill(db, actor, id, s(f, "json"))}.`);
+  await safe(`/empleados/${id}/skill`, async () => `Listo: usamos esa copia (enseñanza n.º ${await importSkill(db, actor, id, s(f, "json"))}).`);
 }
 
 export async function connectAction(f: FormData) {
   const { db, actor } = await requireActor(); const k = s(f, "toolkit"); const op = s(f, "op");
   let url: string | undefined;
   await safe("/conexiones", async () => {
-    if (op === "connect") { url = (await startConnection(db, actor, k)).redirectUrl; return url ? `Abre este enlace para autorizar: ${url}` : "Conexión iniciada. Pulsa «Probar»."; }
+    if (op === "connect") { url = (await startConnection(db, actor, k)).redirectUrl; return url ? `Un paso más: abre este enlace y da tu permiso: ${url}` : "Empezamos la conexión. Cuando termines de dar el permiso, pulsa «Probar conexión»."; }
     if (op === "test") { const r = await testConnection(db, actor, k); return r.message; }
-    if (op === "disconnect") { await disconnect(db, actor, k); return "Desconectada."; }
+    if (op === "disconnect") { await disconnect(db, actor, k); return "Listo: la aplicación quedó desconectada."; }
   });
 }
 export async function docAction(f: FormData) {
   const { db, actor } = await requireActor();
   await safe("/conocimiento", async () => {
-    if (s(f, "op") === "delete") { await deleteDoc(db, actor, s(f, "id")); return "Documento eliminado."; }
+    if (s(f, "op") === "delete") { await deleteDoc(db, actor, s(f, "id")); return "Listo: lo quitamos."; }
     const allowed = f.getAll("allowed").map(String);
-    await addDoc(db, actor, { title: s(f, "title"), kind: s(f, "kind") || "documento", content: s(f, "content"), allowedEmployeeIds: allowed.length ? allowed : null }); return "Documento agregado.";
+    await addDoc(db, actor, { title: s(f, "title"), kind: s(f, "kind") || "documento", content: s(f, "content"), allowedEmployeeIds: allowed.length ? allowed : null }); return "Listo: guardamos esa información.";
   });
 }
 export async function automationAction(f: FormData) {
@@ -158,6 +159,17 @@ export async function automationAction(f: FormData) {
     const trigger = type === "event" ? { type: "event", event: s(f, "event") } : { type: "interval", everyMinutes: Number(s(f, "everyMinutes")) };
     const cond = s(f, "condField") ? [{ field: s(f, "condField"), op: s(f, "condOp"), value: isNaN(Number(s(f, "condValue"))) ? s(f, "condValue") : Number(s(f, "condValue")) }] : [];
     await createAutomation(db, actor, { name: s(f, "name"), trigger, conditions: cond, employeeId: s(f, "employeeId"), instruction: s(f, "instruction"), maxRunsPerDay: Number(s(f, "maxRunsPerDay")) || 5, maxRetries: Number(s(f, "maxRetries")) || 0 });
-    return "Automatización creada.";
+    return "Listo: la tarea automática quedó creada.";
+  });
+}
+
+/** «Enseña a tu empleado»: el servidor reconstruye las instrucciones desde las 5 respuestas y guarda una VERSIÓN nueva (se puede volver atrás). */
+export async function teachEmployeeAction(f: FormData) {
+  const { db, actor } = await requireActor(); const id = s(f, "id");
+  await safe(`/empleados/${id}`, async () => {
+    const cur = await getCurrentSkill(db, actor, id);
+    const spec = buildTaughtSkill(cur.spec, { quiere: s(f, "quiere"), como: s(f, "como"), sabe: s(f, "sabe"), nunca: s(f, "nunca"), resultado: s(f, "resultado") });
+    await saveSkillVersion(db, actor, id, spec, "Lo que le enseñé");
+    return "Listo: tu empleado aprendió lo nuevo. Puedes volver a una versión anterior cuando quieras.";
   });
 }

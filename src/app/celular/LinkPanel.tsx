@@ -8,15 +8,15 @@ export function LinkPanel({ channel, label, configured, botUsername, waNumber }:
   const link = mine?.code ? (channel === "telegram" ? (botUsername ? `https://t.me/${botUsername}?start=${mine.code}` : "") : waNumber ? `https://wa.me/${waNumber.replace(/\D/g, "")}?text=${encodeURIComponent(mine.code)}` : "") : "";
   return (<div className="card" data-testid={`link-${channel}`}>
     <h3>{label}</h3>
-    {!configured && <p className="notice">Este servidor aún no tiene las credenciales de {label}. Puedes generar el código, pero no funcionará hasta que el administrador configure el canal (ver docs/MENSAJERIA.md).</p>}
+    {!configured && <p className="notice">🔧 {label} todavía no está activado en esta instalación. Puedes generar tu código, pero no funcionará hasta que quien instaló la plataforma lo active (en «Ayuda» está dónde encontrar los pasos).</p>}
     <form action={action}><input type="hidden" name="channel" value={channel} />
-      <label style={{ fontWeight: 400, display: "flex", gap: 8 }}><input type="checkbox" name="consent" required style={{ width: "auto", marginTop: 4 }} /><span>Acepto recibir mensajes de la plataforma por {label} (avisos, resultados y aprobaciones). Puedo revocarlo cuando quiera.</span></label>
-      <p><button disabled={pending}>{pending ? "Generando…" : `Conectar ${label}`}</button></p></form>
+      <label style={{ fontWeight: 400, display: "flex", gap: 8 }}><input type="checkbox" name="consent" required style={{ width: "auto", marginTop: 4 }} /><span>Acepto recibir mensajes por {label} (avisos, resultados y permisos por aprobar). Puedo desconectarlo cuando quiera.</span></label>
+      <p><button className="big" disabled={pending}>{pending ? "Preparando tu código…" : `Conectar ${label}`}</button></p></form>
     {mine?.error && <div className="notice bad" role="alert">{mine.error}</div>}
-    {mine?.code && (<div className="notice ok" role="status"><p>Tu código (un solo uso, vence a las {new Date(mine.expiresAt!).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}):</p>
+    {mine?.code && (<div className="notice ok" role="status"><p>Tu código (sirve una sola vez, vence a las {new Date(mine.expiresAt!).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}):</p>
       <p style={{ fontSize: "1.6rem", fontWeight: 700, letterSpacing: ".08em" }} data-testid="link-code">{mine.code}</p>
       <p>{channel === "telegram" ? "Abre el bot y pulsa «Iniciar», o envíale: " : "Envía este código al número de WhatsApp de la plataforma: "}<code>{channel === "telegram" ? `/start ${mine.code}` : mine.code}</code></p>
       {link ? <p><a className="btn" href={link} target="_blank" rel="noreferrer">Abrir {label}</a></p> : <p className="muted">El administrador aún no configuró {channel === "telegram" ? "el usuario del bot" : "el número visible"}: busca el contacto de la plataforma manualmente.</p>}
-      <p className="muted">No compartas este código. Se muestra una sola vez y no queda guardado en claro.</p></div>)}
+      <p className="muted">No compartas este código con nadie. Solo se muestra una vez.</p></div>)}
   </div>);
 }

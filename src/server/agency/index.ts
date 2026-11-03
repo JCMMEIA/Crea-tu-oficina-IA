@@ -23,12 +23,12 @@ const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usa #RRGGBB)
 const logo = z.string().max(220_000).refine((v) => /^https:\/\/[^\s"'<>]+$/.test(v) || /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(v), "El logo debe ser una URL https o una imagen PNG/JPG/WEBP.");
 const brandSchema = z.object({
   name: z.string().trim().min(1).max(120), specialty: z.string().trim().max(200).default(""),
-  tagline: z.string().trim().max(160).default(""), primaryColor: hex.default("#4f46e5"), logo: logo.nullable().default(null),
+  tagline: z.string().trim().max(160).default(""), primaryColor: hex.default("#4f46e5"), logo: logo.nullable().default(null), style: z.enum(["moderno", "calido", "fresco"]).default("moderno"),
 });
 export async function updateBrand(db: Db, a: AgencyActor, input: unknown) {
   assertAgencyCan(a, "agency:brand");
   const v = brandSchema.parse(input);
-  await db.query("UPDATE agencies SET name=$2, specialty=$3, brand=$4 WHERE id=$1", [a.agencyId, v.name, v.specialty, JSON.stringify({ tagline: v.tagline, primaryColor: v.primaryColor, logo: v.logo })]);
+  await db.query("UPDATE agencies SET name=$2, specialty=$3, brand=$4 WHERE id=$1", [a.agencyId, v.name, v.specialty, JSON.stringify({ tagline: v.tagline, primaryColor: v.primaryColor, logo: v.logo, style: v.style })]);
   await aud(db, a, "agency.brand", a.agencyId);
 }
 
@@ -38,7 +38,7 @@ export async function createClient(db: Db, a: AgencyActor, input: unknown): Prom
   assertAgencyCan(a, "agency:clients");
   const v = clientSchema.parse(input);
   const ag = (await db.query("SELECT plan FROM agencies WHERE id=$1", [a.agencyId]))[0];
-  const n = Number((await db.query<{ n: string }>("SELECT count(*) n FROM companies WHERE agency_id=$1", [a.agencyId]))[0].n);
+  const n = Number((await db.query<{ n: string }>("SELECT count(*) n FROM companies WHERE agency_id=$1 AND is_demo=false", [a.agencyId]))[0].n);
   if (n >= planOf(ag.plan).maxClients) throw new Error(`Tu plan ${planOf(ag.plan).label} permite hasta ${planOf(ag.plan).maxClients} clientes.`);
   const id = newId();
   await db.query("INSERT INTO companies(id,name,agency_id,industry,profile,monthly_budget_usd) VALUES($1,$2,$3,$4,$5,$6)", [id, v.name, a.agencyId, v.industry, JSON.stringify(v.profile), v.monthlyBudgetUsd]);
@@ -47,7 +47,7 @@ export async function createClient(db: Db, a: AgencyActor, input: unknown): Prom
 }
 export async function listClients(db: Db, a: AgencyActor) {
   assertAgencyCan(a, "agency:read");
-  return db.query(`SELECT c.id,c.name,c.industry,c.monthly_budget_usd::float budget,c.created_at,
+  return db.query(`SELECT c.id,c.name,c.industry,c.is_demo,c.monthly_budget_usd::float budget,c.created_at,
     (SELECT count(*)::int FROM employees e WHERE e.company_id=c.id) employees,
     (SELECT count(*)::int FROM tasks t WHERE t.company_id=c.id) tasks,
     (SELECT count(*)::int FROM approvals ap WHERE ap.company_id=c.id AND ap.status='pending') pending_approvals,

@@ -179,3 +179,7 @@ CREATE TABLE IF NOT EXISTS outbox (
 CREATE TABLE IF NOT EXISTS agency_channel_credentials (
   agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE, channel text NOT NULL, secret_enc text NOT NULL,
   meta jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (agency_id, channel));
+
+-- === Rediseño de experiencia ===
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS onboarding jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS is_demo boolean NOT NULL DEFAULT false;

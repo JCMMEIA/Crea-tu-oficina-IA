@@ -38,7 +38,7 @@ export async function createCustomDepartment(db: Db, actor: Actor, name: string)
 
 /** Límite de empleados según el plan de la agencia dueña de la empresa. */
 async function assertEmployeeCapacity(db: Db, companyId: string) {
-  const r = (await db.query("SELECT a.plan, (SELECT count(*) FROM employees e JOIN companies c2 ON c2.id=e.company_id WHERE c2.agency_id=a.id) n FROM companies c JOIN agencies a ON a.id=c.agency_id WHERE c.id=$1", [companyId]))[0];
+  const r = (await db.query("SELECT a.plan, (SELECT count(*) FROM employees e JOIN companies c2 ON c2.id=e.company_id WHERE c2.agency_id=a.id AND c2.is_demo=false) n FROM companies c JOIN agencies a ON a.id=c.agency_id WHERE c.id=$1", [companyId]))[0];
   if (r && Number(r.n) >= planOf(r.plan).maxEmployees) throw new Error(`Tu plan ${planOf(r.plan).label} permite hasta ${planOf(r.plan).maxEmployees} empleados de IA en total.`);
 }
 

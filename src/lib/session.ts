@@ -28,7 +28,7 @@ export async function requireAgency(): Promise<{ db: Db; agency: AgencyActor }> 
 export async function setSessionCookie(token: string) {
   (await cookies()).set(COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 7 * 86400 });
 }
-export const money = (n: number) => `US$ ${Number(n).toFixed(4)}`;
+export const money = (n: number) => (Number(n) > 0 && Number(n) < 0.01 ? "menos de US$ 0.01" : `US$ ${Number(n).toFixed(2)}`);
 export const when = (d: unknown) => (d ? new Date(d as any).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }) : "—");
 export const STATUS_LABEL: Record<string, [string, string]> = {
   requested: ["Solicitado", ""], in_progress: ["En progreso", "warn"], completed: ["Completado", "ok"],

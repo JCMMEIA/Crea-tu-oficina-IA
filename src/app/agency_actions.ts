@@ -3,11 +3,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/server/db";
-import { actAs, login, signupAgency } from "@/server/auth";
+import { actAs, audit, login, signupAgency } from "@/server/auth";
 import { COMPANY_COOKIE, requireAgency, setSessionCookie } from "@/lib/session";
 import { addClientUser, applyIndustryTemplate, createClient, createProposal, createService, saveAgencySkill, getAgencySkill, setClientLimits, setProposalStatus, updateBrand, updateService } from "@/server/agency";
 import { deployServiceToClient } from "@/server/agency/deploy";
 import { skillSpecSchema } from "@/server/skills";
+import { buildTaughtSkill } from "@/lib/teach";
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "");
 const back = (path: string, msg: string, kind: "ok" | "bad" = "bad") => redirect(`${path}${path.includes("?") ? "&" : "?"}${kind === "ok" ? "ok" : "error"}=${encodeURIComponent(msg)}`);
@@ -35,14 +36,16 @@ export async function agencySignupAction(f: FormData) {
     await signupAgency(db, { email: s(f, "email"), name: s(f, "name"), password: s(f, "password"), agencyName: s(f, "agencyName"), specialty: s(f, "specialty") });
     await setSessionCookie(await login(db, s(f, "email"), s(f, "password")));
   } catch (e: any) { if (e?.digest) throw e; return redirect("/registro?error=" + encodeURIComponent(e?.name === "ZodError" ? "Revisa los datos (contraseña de al menos 10 caracteres)." : e.message)); }
-  redirect("/agencia");
+  redirect("/empezar");
 }
 
 export async function enterClientAction(f: FormData) {
   const { db, agency } = await requireAgency();
   try { await actAs(db, agency, s(f, "companyId")); } catch { return back("/agencia/clientes", "Cliente no encontrado."); }
   (await cookies()).set(COMPANY_COOKIE, s(f, "companyId"), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
-  redirect(s(f, "to") === "construir" ? "/construir?paso=3" : s(f, "to") === "oficina3d" ? "/oficina-3d" : "/oficina");
+  const next = s(f, "next");
+  if (next.startsWith("/") && !next.startsWith("//") && !next.includes("://")) redirect(next); // solo rutas internas
+  redirect(s(f, "to") === "construir" ? "/agregar-empleado" : s(f, "to") === "oficina3d" ? "/oficina-3d" : "/oficina");
 }
 export async function leaveClientAction() { (await cookies()).delete(COMPANY_COOKIE); redirect("/agencia/clientes"); }
 
@@ -57,8 +60,9 @@ export async function brandAction(f: FormData) {
       logo = `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
     }
     if (s(f, "removeLogo") === "on") logo = null;
-    await updateBrand(db, agency, { name: s(f, "name"), specialty: s(f, "specialty"), tagline: s(f, "tagline"), primaryColor: s(f, "primaryColor"), logo });
-    return "Identidad guardada.";
+    const swatch = s(f, "swatch"); const custom = s(f, "primaryColor"); const colorChosen = /^#[0-9a-fA-F]{6}$/.test(swatch) && custom.toLowerCase() === (s(f, "currentColor") || custom).toLowerCase() ? swatch : custom;
+    await updateBrand(db, agency, { name: s(f, "name"), specialty: s(f, "specialty"), tagline: s(f, "tagline"), primaryColor: colorChosen, logo, style: s(f, "style") || "moderno" });
+    return "Tu marca quedó guardada.";
   });
 }
 export async function clientCreateAction(f: FormData) {
@@ -68,35 +72,35 @@ export async function clientCreateAction(f: FormData) {
 }
 export async function clientLimitsAction(f: FormData) {
   const { db, agency } = await requireAgency(); const id = s(f, "companyId");
-  await safe(`/agencia/clientes/${id}`, async () => { await setClientLimits(db, agency, id, { monthlyBudgetUsd: Number(s(f, "budget")), maxRunsPerHour: Number(s(f, "perHour")) || undefined }); return "Límites guardados."; });
+  await safe(`/agencia/clientes/${id}`, async () => { await setClientLimits(db, agency, id, { monthlyBudgetUsd: Number(s(f, "budget")), maxRunsPerHour: Number(s(f, "perHour")) || undefined }); return "Listo: guardamos el presupuesto."; });
 }
 export async function clientUserAction(f: FormData) {
   const { db, agency } = await requireAgency(); const id = s(f, "companyId");
-  await safe(`/agencia/clientes/${id}`, async () => { await addClientUser(db, agency, id, { email: s(f, "email"), name: s(f, "name"), password: s(f, "password"), role: s(f, "role") as any }); return "Usuario del cliente creado. Comparte la contraseña inicial por un canal seguro y pídele que la cambie."; });
+  await safe(`/agencia/clientes/${id}`, async () => { await addClientUser(db, agency, id, { email: s(f, "email"), name: s(f, "name"), password: s(f, "password"), role: s(f, "role") as any }); return "Listo: esa persona ya puede entrar. Pásale la contraseña por un medio seguro y pídele que la cambie."; });
 }
 export async function deployAction(f: FormData) {
   const { db, agency } = await requireAgency(); const id = s(f, "companyId");
-  await safe(`/agencia/clientes/${id}`, async () => { const e = await deployServiceToClient(db, agency, s(f, "serviceId"), id); return `Servicio desplegado: ${e.length} empleados de IA contratados en la oficina del cliente.`; });
+  await safe(`/agencia/clientes/${id}`, async () => { const e = await deployServiceToClient(db, agency, s(f, "serviceId"), id); return `Listo: ${e.length} empleado(s) agregado(s) a la oficina del cliente.`; });
 }
 export async function serviceCreateAction(f: FormData) {
   const { db, agency } = await requireAgency();
   await safe("/agencia/servicios", async () => {
-    await createService(db, agency, { name: s(f, "name"), description: s(f, "description"), templateKeys: f.getAll("templateKeys").map(String), priceUsd: Number(s(f, "price")), priceUnit: s(f, "unit") || "mes", estTasksPerMonth: Number(s(f, "tasks")) || 20 }); return "Servicio creado.";
+    await createService(db, agency, { name: s(f, "name"), description: s(f, "description"), templateKeys: f.getAll("templateKeys").map(String), priceUsd: Number(s(f, "price")), priceUnit: s(f, "unit") || "mes", estTasksPerMonth: Number(s(f, "tasks")) || 20 }); return "Listo: creaste el servicio.";
   });
 }
 export async function serviceUpdateAction(f: FormData) {
   const { db, agency } = await requireAgency();
-  await safe("/agencia/servicios", async () => { await updateService(db, agency, s(f, "id"), { priceUsd: f.get("price") ? Number(s(f, "price")) : undefined, status: (s(f, "status") || undefined) as any }); return "Servicio actualizado."; });
+  await safe("/agencia/servicios", async () => { await updateService(db, agency, s(f, "id"), { priceUsd: f.get("price") ? Number(s(f, "price")) : undefined, status: (s(f, "status") || undefined) as any }); return "Listo: guardamos el cambio."; });
 }
 export async function industryAction(f: FormData) {
   const { db, agency } = await requireAgency();
-  await safe("/agencia/servicios", async () => `Se agregaron ${(await applyIndustryTemplate(db, agency, s(f, "industry"))).length} servicios como borrador. Ajusta los precios antes de publicar.`);
+  await safe("/agencia/servicios", async () => `Listo: agregamos ${(await applyIndustryTemplate(db, agency, s(f, "industry"))).length} servicios de ejemplo. Cambia los precios antes de ofrecerlos.`);
 }
 export async function agencySkillAction(f: FormData) {
   const { db, agency } = await requireAgency(); const k = s(f, "key");
   await safe(`/agencia/skills?plantilla=${k}`, async () => {
     const cur = (await getAgencySkill(db, agency, k)).spec; const lines = (x: string) => s(f, x).split("\n").map((l) => l.trim()).filter(Boolean);
-    await saveAgencySkill(db, agency, k, skillSpecSchema.parse({ ...cur, systemPrompt: s(f, "systemPrompt"), procedures: lines("procedures"), outputFormat: s(f, "outputFormat") }), s(f, "note")); return "Skill de la agencia guardada. Se usará en las próximas contrataciones; los clientes ya creados no cambian.";
+    await saveAgencySkill(db, agency, k, skillSpecSchema.parse({ ...cur, systemPrompt: s(f, "systemPrompt"), procedures: lines("procedures"), outputFormat: s(f, "outputFormat") }), s(f, "note")); return "Guardado. Los clientes nuevos tendrán a este empleado ya enseñado; los actuales no cambian.";
   });
 }
 export async function proposalCreateAction(f: FormData) {
@@ -107,5 +111,54 @@ export async function proposalCreateAction(f: FormData) {
 }
 export async function proposalStatusAction(f: FormData) {
   const { db, agency } = await requireAgency(); const id = s(f, "id");
-  await safe(`/agencia/propuestas/${id}`, async () => { await setProposalStatus(db, agency, id, s(f, "status") as any); return "Estado actualizado (no se envió nada a nadie)."; });
+  await safe(`/agencia/propuestas/${id}`, async () => { await setProposalStatus(db, agency, id, s(f, "status") as any); return "Listo. Ojo: solo es una nota para ti, no se envió nada a nadie."; });
+}
+
+/** «Agregar empleado» desde la agencia: contrata en la oficina elegida (la agencia solo puede elegir las suyas). */
+export async function agencyHireAction(f: FormData) {
+  const { db, agency } = await requireAgency(); const company = s(f, "companyId"); const back = s(f, "back") || "/agencia/contratar";
+  await safe(back, async () => {
+    const actor = await actAs(db, agency, company); const keys = f.getAll("empleado").map(String);
+    if (!keys.length) throw new Error("Elige al menos un empleado.");
+    const { hireFromTemplate } = await import("@/server/catalog/office");
+    for (const k of keys) await hireFromTemplate(db, actor, k);
+    return keys.length === 1 ? "Empleado agregado a la oficina." : `${keys.length} empleados agregados a la oficina.`;
+  });
+}
+/** «Crear tarea» desde la agencia: crea la tarea en el motor existente y lleva a ver su seguimiento. */
+export async function agencyTaskAction(f: FormData) {
+  const { db, agency } = await requireAgency(); const [company, employeeId] = s(f, "target").split(":"); let target = "/agencia/tarea";
+  try {
+    const actor = await actAs(db, agency, company);
+    const { createTask, runWorkflow, DuplicateTaskError } = await import("@/server/tasks"); const { getProvider } = await import("@/server/models"); const { getAdapter } = await import("@/server/connectors");
+    try {
+      const id = await createTask(db, actor, { employeeId, title: s(f, "instruction").slice(0, 80), instruction: s(f, "instruction") });
+      (await cookies()).set(COMPANY_COOKIE, company, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+      target = `/actividad/${id}`; await runWorkflow(db, actor, id, { provider: getProvider(), adapter: getAdapter() });
+    } catch (e: any) { if (e instanceof DuplicateTaskError) { target = `/actividad/${e.existingId}`; } else throw e; }
+  } catch (e: any) { if (e?.digest?.startsWith?.("NEXT_REDIRECT")) throw e; return back("/agencia/tarea", e?.name === "ZodError" ? "Escribe qué necesitas que haga." : e?.message ?? "No se pudo crear la tarea."); }
+  revalidatePath("/", "layout"); redirect(target);
+}
+
+/** El asistente guiado solo PROPONE: esto se ejecuta únicamente cuando la persona pulsa el botón. */
+export async function assistantHireAction(f: FormData) {
+  const { db, agency } = await requireAgency();
+  await safe("/agencia/asistente", async () => { const { hireInDemo } = await import("@/server/onboarding"); const ids = await hireInDemo(db, agency, f.getAll("empleado").map(String)); return ids.length ? `Listo: ${ids.length} empleado(s) agregado(s) a tu oficina de práctica.` : "Esos empleados ya estaban en tu oficina de práctica."; });
+}
+/** «Avísame cuando esté»: se registra el interés (real, auditable); no se simula una conexión. */
+export async function appInterestAction(f: FormData) {
+  const { requireUser } = await import("@/lib/session"); const { db, user } = await requireUser();
+  await audit(db, { userId: user.userId }, "app.interest", s(f, "app").slice(0, 40));
+  const to = s(f, "back"); const path = to.startsWith("/") && !to.startsWith("//") ? to : "/conexiones";
+  return back(path, `Anotado: te avisaremos cuando ${s(f, "title") || "esa aplicación"} esté disponible.`, "ok");
+}
+
+/** Enseñar UNA vez: lo que aprende un empleado de la agencia lo sabrán todos los clientes nuevos (los actuales no cambian). */
+export async function teachAgencyAction(f: FormData) {
+  const { db, agency } = await requireAgency(); const k = s(f, "key");
+  await safe(`/agencia/skills?plantilla=${k}`, async () => {
+    const cur = (await getAgencySkill(db, agency, k)).spec;
+    await saveAgencySkill(db, agency, k, buildTaughtSkill(cur, { quiere: s(f, "quiere"), como: s(f, "como"), sabe: s(f, "sabe"), nunca: s(f, "nunca"), resultado: s(f, "resultado") }), "Lo que le enseñé");
+    return "Guardado. Los clientes nuevos tendrán a este empleado ya enseñado; los actuales no cambian.";
+  });
 }

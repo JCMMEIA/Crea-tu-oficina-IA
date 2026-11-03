@@ -1,6 +1,0 @@
-export default function Ayuda() {
-  return (<><h1>Ayuda y tutorial</h1>
-    <div className="card"><h2>En 5 pasos</h2><ol><li><b>Construye tu oficina:</b> perfil, departamentos y empleados.</li><li><b>Conecta tus aplicaciones</b> en «Conecta tu empresa».</li><li><b>Personaliza</b> a cada empleado con el editor de skills (modo principiante: 8 preguntas).</li><li><b>Asigna una tarea</b> desde la ficha del empleado y revisa el resultado en Actividad.</li><li><b>Aprueba</b> las acciones importantes en Aprobaciones. Nada se publica ni se envía sin tu sí.</li></ol></div>
-    <div className="card" style={{ marginTop: 12 }}><h2>Activar la IA (la hace el propietario del servidor)</h2><p>Define <code>ANTHROPIC_API_KEY</code>, <code>MODEL_ID</code> y las tarifas <code>MODEL_INPUT_USD_PER_MTOK</code> / <code>MODEL_OUTPUT_USD_PER_MTOK</code> en <code>.env.local</code>. Pon también un límite de gasto en la consola del proveedor: los topes internos son estimaciones.</p>
-      <h2>Activar integraciones</h2><p>Define <code>COMPOSIO_API_KEY</code>. Cada empresa conecta sus propias cuentas; el identificador de empresa se usa como entidad en Composio. Consulta <code>docs/GUIA_CLAUDE_Y_COMPOSIO.md</code>.</p></div></>);
-}
