@@ -170,7 +170,8 @@ export async function teachAgencyAction(f: FormData) {
 export async function requestPlanAction(f: FormData) {
   const { db, agency } = await requireAgency();
   try {
-    const r = await startCheckout(db, agency, s(f, "plan"));
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const r = await startCheckout(db, agency, s(f, "plan"), { success: `${site}/agencia/plan?ok=${encodeURIComponent("Gracias. Estamos confirmando tu pago; tu plan se activa en unos segundos.")}`, cancel: `${site}/agencia/plan` });
     if (r.mode === "pago") return redirect(r.url);
   } catch (e: any) { if (e?.digest) throw e; return redirect("/agencia/plan?error=" + encodeURIComponent(e.message)); }
   redirect("/agencia/plan?ok=" + encodeURIComponent("Listo, recibimos tu solicitud. No se cobró nada."));

@@ -234,3 +234,5 @@ CREATE TABLE IF NOT EXISTS plan_requests (
 CREATE TABLE IF NOT EXISTS support_requests (
   id text PRIMARY KEY, agency_id text, user_id text, email text NOT NULL, subject text NOT NULL, body text NOT NULL,
   status text NOT NULL DEFAULT 'abierta' CHECK (status IN ('abierta','resuelta')), created_at timestamptz NOT NULL DEFAULT now());
+-- Eventos de pago ya procesados (idempotencia de webhooks).
+CREATE TABLE IF NOT EXISTS payment_events (external_id text PRIMARY KEY, agency_id text NOT NULL, type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());

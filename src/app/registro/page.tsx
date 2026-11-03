@@ -12,6 +12,7 @@ export default async function Registro({ searchParams }: { searchParams: Promise
       <label htmlFor="n">Tu nombre</label><input id="n" name="name" required autoComplete="name" />
       <label htmlFor="e">Tu correo</label><Help>Con él entrarás cada vez.</Help><input id="e" name="email" type="email" required autoComplete="email" inputMode="email" />
       <label htmlFor="p">Elige una contraseña</label><Help>Al menos 10 letras o números.</Help><input id="p" name="password" type="password" minLength={10} required autoComplete="new-password" />
+      <p className="muted" style={{ fontSize: ".85rem" }}>Al crear tu cuenta aceptas la <a href="/privacidad">política de privacidad</a>.</p>
       <p><button className="big" data-testid="signup">Crear mi negocio</button></p></form>
     <p className="muted">¿Ya tienes cuenta? <Link href="/login">Entrar</Link></p></div>);
 }

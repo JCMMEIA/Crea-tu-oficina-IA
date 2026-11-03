@@ -2,6 +2,7 @@ import { Db, newId } from "../db";
 import { AgencyActor, assertAgencyCan, audit } from "../auth";
 import { isPlanKey, planOf, PlanKey } from "../agency/plans";
 import { assertOperator, Operator } from "./admin";
+import { stripeProviderFromEnv } from "./stripe";
 
 /**
  * ARQUITECTURA DE LICENCIAS (cobro DESACTIVADO).
@@ -17,17 +18,24 @@ export interface PaymentProvider {
   /** Valida firma del webhook y devuelve el evento normalizado; debe lanzar si la firma es inválida. */
   parseWebhook(rawBody: string, headers: Record<string, string>): Promise<{ type: "paid" | "cancelled"; agencyId: string; plan: PlanKey; externalId: string }>;
 }
-let provider: PaymentProvider | null = null; // sin implementación: cobros apagados
+let provider: PaymentProvider | null = null; // registrado a mano (pruebas)
 export const registerPaymentProvider = (p: PaymentProvider | null) => { provider = p; };
-export const billingEnabled = () => process.env.BILLING_ENABLED === "true" && provider !== null;
-export const billingStatus = () => ({ enabled: billingEnabled(), flag: process.env.BILLING_ENABLED === "true", provider: provider?.name ?? null });
+/** El proveedor sale de las variables de entorno (Stripe) SOLO si BILLING_ENABLED=true. Con la bandera apagada no se construye nada. */
+function activeProvider(): PaymentProvider | null {
+  if (process.env.BILLING_ENABLED !== "true") return null;
+  if (provider) return provider;
+  return stripeProviderFromEnv();
+}
+export const billingEnabled = () => activeProvider() !== null;
+export const billingStatus = () => ({ enabled: billingEnabled(), flag: process.env.BILLING_ENABLED === "true", provider: activeProvider()?.name ?? null });
 
 export type CheckoutResult = { mode: "solicitud"; requestId: string } | { mode: "pago"; url: string };
 /** «Contratar»: con cobros apagados registra una SOLICITUD para que el equipo te contacte. No cobra, no activa nada. */
 export async function startCheckout(db: Db, a: AgencyActor, plan: string, urls = { success: "", cancel: "" }): Promise<CheckoutResult> {
   assertAgencyCan(a, "agency:brand");
   if (!isPlanKey(plan) || plan === "prueba") throw new Error("Elige un plan de pago válido.");
-  if (billingEnabled() && provider) {
+  const provider = activeProvider();
+  if (provider) {
     const c = await provider.createCheckout({ agencyId: a.agencyId, plan, successUrl: urls.success, cancelUrl: urls.cancel });
     await audit(db, { userId: a.userId }, "billing.checkout_started", a.agencyId, { plan });
     return { mode: "pago", url: c.url };
@@ -42,10 +50,15 @@ export async function startCheckout(db: Db, a: AgencyActor, plan: string, urls =
 
 /** Procesa un webhook de pasarela. Hoy lanza siempre: no hay pasarela autorizada. */
 export async function handlePaymentWebhook(db: Db, rawBody: string, headers: Record<string, string>) {
-  if (!provider || !billingEnabled()) throw new Error("Cobros desactivados: no se acepta ningún evento de pago.");
-  const ev = await provider.parseWebhook(rawBody, headers);
+  const provider = activeProvider();
+  if (!provider) throw new Error("Cobros desactivados: no se acepta ningún evento de pago.");
+  let ev; try { ev = await provider.parseWebhook(rawBody, headers); } catch (e: any) { if (e?.message === "IGNORE") return "ignorado" as const; throw e; }
+  // Idempotencia: Stripe reenvía eventos; cada id se procesa una sola vez.
+  const fresh = await db.query("INSERT INTO payment_events(external_id,agency_id,type) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING external_id", [ev.externalId, ev.agencyId, ev.type]);
+  if (!fresh.length) return "repetido" as const;
   if (ev.type === "paid") await applyLicense(db, ev.agencyId, ev.plan, "pasarela", `pago ${ev.externalId}`, null);
   else await endLicense(db, ev.agencyId, "cancelada", `cancelación ${ev.externalId}`, null);
+  return "procesado" as const;
 }
 
 async function applyLicense(db: Db, agencyId: string, plan: PlanKey, origin: "manual" | "pasarela", note: string, by: string | null) {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { currentActor } from "@/lib/session";
 import { Attribution, CtaLink } from "@/lib/attribution";
-import { PLAN_BLURB, PLAN_ORDER, PLANS, planPrice } from "@/server/agency/plans";
+import { PLAN_BLURB, PLAN_ORDER, PLANS, planPriceInfo, formatPrice } from "@/server/agency/plans";
 import { billingEnabled } from "@/server/commercial/billing";
 
 export const metadata = { title: "Planes — Crea tu Oficina IA", description: "Los planes de Crea tu Oficina IA y lo que incluye cada uno." };
@@ -14,9 +14,9 @@ export default async function Planes() {
     <header><b>🏛️ Crea tu Oficina IA</b><span className="row"><Link href="/">Inicio</Link><Link href="/demo">Pedir demostración</Link></span></header>
     <h1>Planes</h1>
     <p className="sub">Un plan define cuántos clientes y empleados digitales puedes tener. {buy ? "" : <b>Todavía no se cobra: la compra aún no está abierta.</b>}</p>
-    <div className="cols" style={{ marginTop: 18 }}>{PLAN_ORDER.map((k) => { const p = PLANS[k]; const pr = planPrice(k); return (
+    <div className="cols" style={{ marginTop: 18 }}>{PLAN_ORDER.map((k) => { const p = PLANS[k]; const pr = planPriceInfo(k); return (
       <div className="card" key={k} data-testid={`plan-${k}`}><h3>{p.label}</h3><p className="muted">{PLAN_BLURB[k]}</p>
-        <p style={{ fontSize: "1.3rem", margin: "6px 0" }}><b>{k === "prueba" ? "Gratis" : pr ? `US$ ${pr}/mes` : "Precio por confirmar"}</b></p>
+        <p style={{ fontSize: "1.3rem", margin: "6px 0" }}><b>{k === "prueba" ? "Gratis" : formatPrice(pr)}</b></p>
         <ul><li>Hasta <b>{p.maxClients}</b> clientes</li><li>Hasta <b>{p.maxEmployees}</b> empleados digitales</li><li>Oficina 3D, aprobaciones y tu marca</li></ul>
         {k === "prueba" ? <CtaLink className="btn" href="/registro" cta="plan-prueba">Crear cuenta de prueba</CtaLink> : cta(k)}
         {k !== "prueba" && !buy && <p className="muted" style={{ fontSize: ".85rem" }}>Hoy solo puedes pedir que te avisemos: no se hace ningún cobro.</p>}</div>); })}</div>

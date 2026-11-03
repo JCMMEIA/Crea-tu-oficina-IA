@@ -3,7 +3,7 @@ import { requireOperator, when } from "@/lib/session";
 import { Flash } from "@/lib/ui";
 import { getLead } from "@/server/commercial/crm";
 import { INTERESTS, LEAD_STATUSES } from "@/server/leads";
-import { leadFollowupAction, leadNoteAction, leadStatusAction } from "../../../admin_actions";
+import { leadDeleteAction, leadFollowupAction, leadNoteAction, leadStatusAction } from "../../../admin_actions";
 
 const IT = Object.fromEntries(INTERESTS);
 export default async function Prospecto({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
@@ -20,6 +20,7 @@ export default async function Prospecto({ params, searchParams }: { params: Prom
         <div className="card" style={{ marginTop: 12 }}><h3>Recordatorio</h3>{l.next_followup_at && <p>Pendiente: <b>{when(l.next_followup_at)}</b>{l.followup_note ? ` — ${l.followup_note}` : ""}</p>}
           <form action={leadFollowupAction}><input type="hidden" name="id" value={l.id} /><label htmlFor="w">Cuándo</label><input id="w" name="when" type="datetime-local" required /><label htmlFor="n">Para qué</label><input id="n" name="note" maxLength={300} /><p className="row"><button data-testid="save-followup">Programar</button>{l.next_followup_at && <button className="ghost" name="clear" value="1" formNoValidate>Quitar</button>}</p></form>
           <p className="muted" style={{ fontSize: ".85rem" }}>Es un recordatorio dentro de este panel: no se envía ningún correo ni mensaje.</p></div></div></div>
+    <div className="card" style={{ marginTop: 14 }}><h3>Privacidad</h3><p className="muted">Si la persona pide que borremos sus datos, usa este botón. No se puede deshacer.</p><form action={leadDeleteAction}><input type="hidden" name="id" value={l.id} /><button className="ghost" data-testid="delete-lead">Borrar a este prospecto definitivamente</button></form></div>
     <div className="card" style={{ marginTop: 14 }}><h3>Notas</h3><form action={leadNoteAction}><input type="hidden" name="id" value={l.id} /><textarea name="body" rows={2} maxLength={1000} required aria-label="Nueva nota" /><p><button data-testid="save-note">Agregar nota</button></p></form>
       {l.notes.length ? l.notes.map((n: any) => <p key={n.id}><span className="muted">{when(n.created_at)}</span> {n.body}</p>) : <p className="muted">Sin notas.</p>}</div></>);
 }

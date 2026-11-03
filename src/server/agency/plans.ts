@@ -20,3 +20,14 @@ export function planPrice(k: PlanKey): number | null {
   const v = Number(process.env[`PLAN_PRICE_USD_${k.toUpperCase()}`]);
   return Number.isFinite(v) && v > 0 ? v : null;
 }
+
+export interface PriceInfo { amount: number; currency: "MXN" | "USD" }
+/** Precio mensual con moneda. MXN tiene prioridad (una cuenta de Stripe en México solo cobra en MXN). Sin configurar = null. */
+export function planPriceInfo(k: PlanKey): PriceInfo | null {
+  for (const cur of ["MXN", "USD"] as const) {
+    const v = Number(process.env[`PLAN_PRICE_${cur}_${k.toUpperCase()}`]);
+    if (Number.isFinite(v) && v > 0) return { amount: v, currency: cur };
+  }
+  return null;
+}
+export const formatPrice = (p: PriceInfo | null) => (p ? `${p.currency === "MXN" ? "$" : "US$ "}${p.amount.toLocaleString("es-MX")} ${p.currency}/mes` : "Precio por confirmar");

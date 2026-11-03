@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireOperator } from "@/lib/session";
-import { addNote, clearFollowup, setFollowup, setLeadStatus } from "@/server/commercial/crm";
+import { addNote, clearFollowup, deleteLead, setFollowup, setLeadStatus } from "@/server/commercial/crm";
 import { cancelLicense, dismissPlanRequest, grantLicense } from "@/server/commercial/billing";
 import { resolveSupport } from "@/server/commercial/support";
 
@@ -21,3 +21,4 @@ export async function grantLicenseAction(f: FormData) { const { db, op } = await
 export async function cancelLicenseAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/agencias", () => cancelLicense(db, op, s(f, "agencyId"), s(f, "note"))); }
 export async function dismissRequestAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/agencias", () => dismissPlanRequest(db, op, s(f, "id"))); }
 export async function resolveSupportAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/soporte", () => resolveSupport(db, op, s(f, "id"))); }
+export async function leadDeleteAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/prospectos", () => deleteLead(db, op, s(f, "id"))); }

@@ -44,5 +44,5 @@ export default async function Home() {
 
     <section><h2>¿Prefieres que te avisemos?</h2><p className="muted">Si todavía no quieres una demostración, deja tu correo y te avisamos cuando abramos más lugares. ¿Quieres hablar con alguien? <Link href="/demo">Pide una demostración</Link>.</p><LeadForm /></section>
     <section><h2>Preguntas frecuentes</h2>{faq.map(([q, a]) => <details key={q}><summary>{q}</summary><p className="muted">{a}</p></details>)}</section>
-    <footer><Link href="/planes">Planes</Link> · <Link href="/ayuda/tutoriales">Ayuda</Link> · <Link href="/privacidad">Política de privacidad</Link> · Crea tu Oficina IA. Los resultados dependen de cada persona; no se garantizan ganancias.</footer></div>);
+    <footer><Link href="/planes">Planes</Link> · <Link href="/ayuda/tutoriales">Ayuda</Link> · <Link href="/privacidad">Política de privacidad</Link> · {process.env.NEXT_PUBLIC_CONTACT_EMAIL && <><a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL}`}>{process.env.NEXT_PUBLIC_CONTACT_EMAIL}</a> · </>} Crea tu Oficina IA. Los resultados dependen de cada persona; no se garantizan ganancias.</footer></div>);
 }

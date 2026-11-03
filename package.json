@@ -14,7 +14,8 @@
     "automations:tick": "tsx scripts/automations_tick.ts",
     "jobs:tick": "tsx scripts/jobs_tick.ts",
     "pilot:claude": "tsx scripts/pilot/claude_check.ts",
-    "pilot:telegram": "tsx scripts/pilot/telegram_check.ts"
+    "pilot:telegram": "tsx scripts/pilot/telegram_check.ts",
+    "preflight": "tsx scripts/preflight.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

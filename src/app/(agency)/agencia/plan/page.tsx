@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireAgency, when } from "@/lib/session";
 import { Flash } from "@/lib/ui";
-import { PLAN_ORDER, PLANS, planPrice, isPlanKey } from "@/server/agency/plans";
+import { PLAN_ORDER, PLANS, planPriceInfo, formatPrice, isPlanKey } from "@/server/agency/plans";
 import { billingEnabled, entitlements } from "@/server/commercial/billing";
 import { requestPlanAction } from "../../../agency_actions";
 
@@ -18,8 +18,8 @@ export default async function Plan({ searchParams }: { searchParams: Promise<{ p
       {e.license && <p className="muted">Licencia {e.license.status}: plan {e.license.plan} ({e.license.origin === "manual" ? "concedida por el equipo" : "por pasarela"}) desde {when(e.license.starts_at)}.</p>}</div>
     {e.pendingRequest && <div className="tip" role="status" data-testid="plan-pending">✅ Ya recibimos tu solicitud del plan <b>{PLANS[e.pendingRequest.plan as keyof typeof PLANS]?.label}</b> ({when(e.pendingRequest.created_at)}). Una persona te escribirá. No se ha cobrado nada.</div>}
     <h2 style={{ marginTop: 18 }}>Planes</h2>
-    <div className="cols" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>{PLAN_ORDER.filter((k) => k !== "prueba").map((k) => { const p = PLANS[k]; const pr = planPrice(k); return (
-      <div className="card" key={k} style={want === k ? { outline: "2px solid var(--brand)" } : undefined}><h3>{p.label}</h3><p><b>{pr ? `US$ ${pr}/mes` : "Precio por confirmar"}</b></p><p className="muted">{p.maxClients} clientes · {p.maxEmployees} empleados</p>
+    <div className="cols" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>{PLAN_ORDER.filter((k) => k !== "prueba").map((k) => { const p = PLANS[k]; const pr = planPriceInfo(k); return (
+      <div className="card" key={k} style={want === k ? { outline: "2px solid var(--brand)" } : undefined}><h3>{p.label}</h3><p><b>{formatPrice(pr)}</b></p><p className="muted">{p.maxClients} clientes · {p.maxEmployees} empleados</p>
         {e.plan === k ? <p><span className="state ok">Tu plan actual</span></p> :
           <form action={requestPlanAction}><input type="hidden" name="plan" value={k} /><button data-testid={`request-${k}`}>{buy ? "Contratar" : "Quiero este plan"}</button></form>}</div>); })}</div>
     {!buy && <p className="muted" style={{ marginTop: 12 }}><b>Cobros desactivados.</b> «Quiero este plan» solo deja tu solicitud; no se cobra ni se cambia tu plan hasta que el equipo hable contigo.</p>}

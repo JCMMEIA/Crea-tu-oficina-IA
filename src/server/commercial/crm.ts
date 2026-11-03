@@ -42,6 +42,13 @@ export async function addNote(db: Db, op: Operator | null, id: string, body: str
   if (!(await db.query("SELECT 1 FROM leads WHERE id=$1", [id])).length) throw new Error("No encontramos ese prospecto.");
   await db.query("INSERT INTO lead_notes(id,lead_id,body,author_user_id) VALUES($1,$2,$3,$4)", [newId(), id, b, op.userId]);
 }
+/** Derecho de cancelación (ARCO): borra al prospecto y sus notas a petición suya. Queda constancia en la auditoría SIN el correo. */
+export async function deleteLead(db: Db, op: Operator | null, id: string) {
+  assertOperator(op);
+  const r = await db.query("DELETE FROM leads WHERE id=$1 RETURNING id", [id]);
+  if (!r.length) throw new Error("No encontramos ese prospecto.");
+  await audit(db, { userId: op.userId }, "lead.deleted", id);
+}
 export async function crmSummary(db: Db, op: Operator | null) {
   assertOperator(op);
   const by = await db.query("SELECT status, count(*)::int n FROM leads GROUP BY status");
