@@ -1,11 +1,19 @@
-import { createPgliteDb, Db } from "@/server/db";
+import { createPgliteDb, createPgDb, Db } from "@/server/db";
 import { signup, actorFromToken, login, Actor } from "@/server/auth";
 import { CompleteRequest, CompleteResult, ModelProvider, TransientProviderError } from "@/server/models";
 import { ConnectorAdapter, ExecResult } from "@/server/connectors";
 
 process.env.APP_SECRET ??= Buffer.alloc(32, 7).toString("base64");
 
-export const newDb = () => createPgliteDb();
+/** Con TEST_DATABASE_URL las pruebas corren contra un PostgreSQL REAL (un esquema aislado por prueba); sin ella, PGlite en memoria. */
+export async function newDb(): Promise<Db> {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) return createPgliteDb();
+  const { Pool } = await import("pg");
+  const schema = "t_" + Math.random().toString(36).slice(2, 10);
+  const admin = new Pool({ connectionString: url }); await admin.query(`CREATE SCHEMA ${schema}`); await admin.end();
+  return createPgDb(url + (url.includes("?") ? "&" : "?") + "options=" + encodeURIComponent(`-c search_path=${schema}`));
+}
 
 export async function newCompany(db: Db, email: string, name = "Empresa de prueba"): Promise<Actor> {
   await signup(db, { email, name: "Dueño", password: "clave-larga-123", companyName: name });

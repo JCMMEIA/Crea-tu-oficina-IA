@@ -3,14 +3,14 @@ import { Db } from "@/server/db";
 import { login, signupAgency, agencyActorFromToken, AgencyActor } from "@/server/auth";
 import { addLead, deriveSource, pickUtm } from "@/server/leads";
 import { isPlatformAdmin, Operator } from "@/server/commercial/admin";
-import { addNote, crmSummary, listLeads, setFollowup, setLeadStatus, getLead } from "@/server/commercial/crm";
+import { addNote, deleteLead, crmSummary, listLeads, setFollowup, setLeadStatus, getLead } from "@/server/commercial/crm";
 import { trackPublic } from "@/server/commercial/events";
 import { funnel } from "@/server/commercial/metrics";
 import { cancelLicense, billingEnabled, entitlements, grantLicense, handlePaymentWebhook, registerPaymentProvider, startCheckout } from "@/server/commercial/billing";
 import { createSupportRequest, listSupport } from "@/server/commercial/support";
 import { activationChecklist, prepareDemo } from "@/server/commercial/activation";
 import { createClient } from "@/server/agency";
-import { planPrice } from "@/server/agency/plans";
+import { planPrice, planPriceInfo } from "@/server/agency/plans";
 import { newDb } from "./helpers";
 
 let db: Db; const OLD = { ...process.env };
@@ -66,6 +66,17 @@ describe("panel comercial (solo operadores)", () => {
     await setLeadStatus(db, op, a, "demo_agendada"); expect((await crmSummary(db, op)).byStatus.demo_agendada).toBe(1);
     await expect(setLeadStatus(db, op, a, "inventado")).rejects.toThrow(); await expect(setLeadStatus(db, op, "nada", "ganado")).rejects.toThrow();
     expect((await listLeads(db, op, { q: "B@X" })).length).toBe(1);
+  });
+});
+
+describe("derecho de cancelación", () => {
+  it("borrar un prospecto elimina sus notas, solo lo hace un operador y no deja el correo en la auditoría", async () => {
+    await addLead(db, { email: "borrame@x.com", consent: true }); const id = (await db.query("SELECT id FROM leads"))[0].id; await addNote(db, op, id, "nota");
+    await expect(deleteLead(db, { userId: "u", email: "intruso@x.com" }, id)).rejects.toThrow(/permiso/);
+    await deleteLead(db, op, id);
+    expect((await db.query("SELECT 1 FROM leads")).length).toBe(0); expect((await db.query("SELECT 1 FROM lead_notes")).length).toBe(0);
+    expect(JSON.stringify(await db.query("SELECT * FROM audit_log WHERE action='lead.deleted'"))).not.toContain("borrame@x.com");
+    await expect(deleteLead(db, op, id)).rejects.toThrow();
   });
 });
 
@@ -136,7 +147,7 @@ describe("compra y licencias (cobro DESACTIVADO)", () => {
     expect(await startCheckout(db, a, "agencia")).toEqual({ mode: "pago", url: "https://pago.test/x" });
     await handlePaymentWebhook(db, "{}", {}); expect((await entitlements(db, a)).license?.origin).toBe("pasarela"); expect((await funnel(db, op)).compras.cantidad).toBe(1);
   });
-  it("precios: sin configurar = null (nunca inventados)", () => { expect(planPrice("agencia")).toBeNull(); process.env.PLAN_PRICE_USD_AGENCIA = "49"; expect(planPrice("agencia")).toBe(49); process.env.PLAN_PRICE_USD_AGENCIA = "abc"; expect(planPrice("agencia")).toBeNull(); });
+  it("precios: sin configurar = null (nunca inventados)", () => { expect(planPrice("agencia")).toBeNull(); process.env.PLAN_PRICE_USD_AGENCIA = "49"; expect(planPrice("agencia")).toBe(49); process.env.PLAN_PRICE_USD_AGENCIA = "abc"; expect(planPrice("agencia")).toBeNull(); process.env.PLAN_PRICE_MXN_AGENCIA = "899"; expect(planPriceInfo("agencia")).toEqual({ amount: 899, currency: "MXN" }); });
 });
 
 describe("activación y soporte", () => {
@@ -156,5 +167,22 @@ describe("activación y soporte", () => {
     expect(await createSupportRequest(db, { email: "bot@x.com", subject: "spam", body: "spam spam spam" }, {}, "x")).toBe("ignored");
     await expect(createSupportRequest(db, { email: "mal", subject: "x", body: "corto" })).rejects.toThrow();
     expect((await listSupport(db, op)).length).toBe(1);
+  });
+});
+
+import { preflight, preflightOk } from "@/server/ops/preflight";
+describe("revisión de despliegue (preflight)", () => {
+  const good = { NODE_ENV: "production", APP_SECRET: Buffer.alloc(32, 1).toString("base64"), DATABASE_URL: "postgres://u:p@h/db", CRON_SECRET: "x".repeat(32), SIGNUP_ALLOWED_EMAILS: "a@x.com", PLATFORM_ADMIN_EMAILS: "a@x.com", NEXT_PUBLIC_SITE_URL: "https://ejemplo.com", NEXT_PUBLIC_CONTACT_EMAIL: "hola@ejemplo.com" } as NodeJS.ProcessEnv;
+  it("configuración completa pasa; vacía falla y no filtra valores", () => {
+    expect(preflightOk(preflight(good))).toBe(true);
+    const bad = preflight({ APP_SECRET: "corto", DATABASE_URL: "" } as unknown as NodeJS.ProcessEnv); expect(preflightOk(bad)).toBe(false);
+    expect(JSON.stringify(preflight({ ...good, APP_SECRET: "secreto-visible" }))).not.toContain("secreto-visible");
+  });
+  it("cada falla importante se detecta", () => {
+    for (const k of ["APP_SECRET", "DATABASE_URL", "CRON_SECRET", "SIGNUP_ALLOWED_EMAILS", "PLATFORM_ADMIN_EMAILS", "NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_CONTACT_EMAIL"]) expect(preflightOk(preflight({ ...good, [k]: "" }))).toBe(false);
+    expect(preflightOk(preflight({ ...good, NEXT_PUBLIC_SITE_URL: "http://sin-https.com" }))).toBe(false);
+    expect(preflightOk(preflight({ ...good, SIGNUP_ALLOWED_EMAILS: "", PILOT_OPEN_SIGNUP: "yes" }))).toBe(true); // abierto a propósito = aviso
+    expect(preflightOk(preflight({ ...good, STRIPE_SECRET_KEY: "sk_live_x" }))).toBe(false);
+    expect(preflightOk(preflight({ ...good, ANTHROPIC_API_KEY: "k" }))).toBe(false); // clave sin tarifas
   });
 });

@@ -7,6 +7,7 @@ import { importInventory, listDrafts } from "../../src/server/inventory";
 import { runDueAutomations } from "../../src/server/automations";
 import { listTasks, listApprovals } from "../../src/server/tasks";
 import { FakeAdapter } from "../../tests/helpers";
+import fs from "node:fs";
 
 (async () => {
   if (!process.env.ANTHROPIC_API_KEY) { console.log("NO VERIFICADO: falta ANTHROPIC_API_KEY. No se llamó a ningún modelo."); process.exit(2); }
@@ -16,8 +17,19 @@ import { FakeAdapter } from "../../tests/helpers";
   const t0 = new Date(); await createPilotAutomation(db, actor, team["controlador-inventario"], t0);
   await runDueAutomations(db, { provider: new AnthropicProvider(process.env.ANTHROPIC_API_KEY), adapter: new FakeAdapter() }, new Date(t0.getTime() + 86400_000 + 60_000));
   const tasks = await listTasks(db, actor), drafts = await listDrafts(db, actor), aps = await listApprovals(db, actor);
-  const spent = Number((await db.query("SELECT coalesce(sum(cost_usd),0) s FROM usage_events"))[0].s);
-  console.log(JSON.stringify({ tareas: tasks.map((t: any) => [t.employee_name, t.status, t.error ?? null]), borradores: drafts.map((d: any) => [d.total_units, d.status]), aprobaciones_pendientes: aps.length, costo_estimado_usd: spent }, null, 1));
-  const ok = drafts.length === 1 && drafts[0].total_units === EXPECTED.unidades && aps.length === 1;
-  console.log(ok ? "✓ CLAUDE REAL: delegó, el sistema calculó 66 unidades y quedó una aprobación pendiente." : "✗ CLAUDE REAL: el resultado NO coincide con lo esperado (ver detalle arriba)."); process.exit(ok ? 0 : 1);
+  const usage = await db.query("SELECT employee_id, input_tokens, output_tokens, cost_usd::float cost FROM usage_events ORDER BY id");
+  const spent = usage.reduce((n: number, u: any) => n + u.cost, 0);
+  const events = await db.query("SELECT t.title, e.kind, e.detail FROM task_events e JOIN tasks t ON t.id=e.task_id ORDER BY e.id");
+  const toolCalls = events.filter((e: any) => ["tool_executed", "delegated", "approval_requested"].includes(e.kind)).length;
+  const realTokens = usage.length > 0 && usage.every((u: any) => u.input_tokens > 0 && u.output_tokens > 0); // solo una respuesta real de la API trae tokens medidos por el proveedor
+  const out = { tareas: tasks.map((t: any) => [t.employee_name, t.status, t.error ?? null]), borradores: drafts.map((d: any) => [d.total_units, d.status]), aprobaciones_pendientes: aps.length, llamadas_al_modelo: usage.length, acciones_del_modelo_ejecutadas: toolCalls, tokens_entrada: usage.reduce((n: number, u: any) => n + u.input_tokens, 0), tokens_salida: usage.reduce((n: number, u: any) => n + u.output_tokens, 0), costo_estimado_usd: spent };
+  console.log(JSON.stringify(out, null, 1));
+  const ok = drafts.length === 1 && drafts[0].total_units === EXPECTED.unidades && aps.length === 1 && realTokens && tasks.length >= 3 && tasks.every((t: any) => t.status !== "failed");
+  if (ok) {
+    // EVIDENCIA: se guarda solo si TODO salió bien. Sin claves, sin textos del cliente: únicamente conteos, estados y fecha.
+    const file = "docs/pilot/evidencia/claude_real.json";
+    fs.writeFileSync(file, JSON.stringify({ verificado: true, fecha: new Date().toISOString(), modelo: process.env.MODEL_ID ?? "(por defecto)", datos: "100 % ficticios (Verde Vivo, inventado)", ...out, nota: "Ejecutado con la API real de Anthropic: los tokens salen de la respuesta del proveedor. El cálculo de 66 unidades lo hace el sistema, no el modelo." }, null, 1) + "\n");
+    console.log(`✓ CLAUDE REAL: ${tasks.length} tareas ejecutadas por el modelo (${usage.length} llamadas), el sistema calculó ${EXPECTED.unidades} unidades y quedó 1 aprobación pendiente. Evidencia guardada en ${file}`);
+  } else console.log("✗ CLAUDE REAL: el resultado NO cumple lo esperado (ver detalle arriba). No se guardó evidencia.");
+  process.exit(ok ? 0 : 1);
 })().catch((e) => { console.error("ERROR:", e.message); process.exit(1); });
