@@ -1,6 +1,6 @@
 # Reporte de pruebas (2026-11-03)
 
-`npm run check` (actualizado con el modelo de agencias): tipos OK · **151/151 pruebas** (25 del MVP en `tests/core.test.ts` + 18 de agencias en `tests/agency.test.ts` + 3 de leads en `tests/leads.test.ts`, PGlite = Postgres real embebido) · escaneo de secretos limpio · `npm audit --omit=dev`: 0 vulnerabilidades · `next build` OK.
+`npm run check` (actualizado con el modelo de agencias): tipos OK · **173/173 pruebas** (25 del MVP en `tests/core.test.ts` + 18 de agencias en `tests/agency.test.ts` + 3 de leads en `tests/leads.test.ts`, PGlite = Postgres real embebido) · escaneo de secretos limpio · `npm audit --omit=dev`: 0 vulnerabilidades · `next build` OK.
 Además, una prueba de humo en navegador (Playwright, servidor de producción): registro → perfil → contratar → ficha → tarea → skill v2 → conexiones → vista móvil sin scroll horizontal.
 
 **Importante:** las pruebas usan un proveedor de IA y un adaptador Composio **simulados** (`tests/helpers.ts`, no existen en la app). Prueban la lógica del producto, **no** que Claude ni Composio respondan.
@@ -85,3 +85,7 @@ Probar un envío y recepción REALES (credenciales de bot de Telegram; cuenta Me
 
 `npm run check`: **151/151 pruebas** (128 previas + 23 en `tests/redesign.test.ts`: lenguaje sencillo, «Enseña a tu empleado», tarjetas y explicaciones de los 41 empleados, asistente por reglas, estados reales de las aplicaciones, práctica con datos inventados, los 6 pasos del asistente con base real, la oficina de práctica fuera de los límites del plan y su aislamiento entre agencias). Tipos limpios, sin secretos, 0 vulnerabilidades.
 **Baterías de navegador (todas ✓ con la versión final):** `redesign.cjs` (10 escenarios + landing + guía + asistente + móvil + sin 3D + sin variables internas, 0 errores JS) · `agency_flow.cjs` (23 comprobaciones: flujo y aislamiento entre agencias) · `office3d.cjs` (incluye prueba de estrés de cambio de vista) · `messaging.cjs`. Las baterías antiguas se actualizaron a los textos nuevos. Detalle y números: [REDISENO_REPORTE.md](REDISENO_REPORTE.md).
+
+
+## Piloto Nova AI → Verde Vivo (2026-11-03)
+22 pruebas nuevas (`tests/pilot.test.ts`): cálculo de inventario (3 bajo mínimo, 66 unidades, borde «en el mínimo»), validación del CSV, aislamiento por empresa, herramientas internas (el servidor recalcula las cantidades), cadena completa por el programador (3 tareas/3 niveles), aprobar/rechazar/caducada/sin permiso, sin productos bajo mínimo, sin presupuesto, sin IA, delegación entre empresas, aprobación por Telegram simulado y registro cerrado. Además `scripts/pilot/acceptance.ts` (fases a y telegram) y `pilot_ui.cjs` (20 pruebas de navegador ✓). **Modelo de IA simulado; Claude, Telegram y Composio reales: no verificados.** Detalle: [PILOTO_VERDE_VIVO_REPORTE.md](PILOTO_VERDE_VIVO_REPORTE.md).
