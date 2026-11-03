@@ -94,3 +94,8 @@ Probar un envío y recepción REALES (credenciales de bot de Telegram; cuenta Me
 - `npm run check`: **190/190** pruebas (17 nuevas en `tests/commercial.test.ts`), tipos limpios, 0 patrones de secretos.
 - E2E en navegador `scripts/e2e/commercial.cjs`: **36/36** (evidencia en `docs/comercial/evidencia/`). Detalle y límites en `docs/SISTEMA_COMERCIAL.md`.
 - Pasarela de pago: **no probada** (no existe; solo una pasarela falsa en pruebas unitarias para validar el contrato).
+
+## Pre-lanzamiento (2026-11-03)
+- **202/202** pruebas con PGlite (`npm run check`) **y 202/202 contra PostgreSQL 16 real** (`TEST_DATABASE_URL=… npx vitest run`).
+- Recorrido en navegador (36 comprobaciones) sobre la app compilada con `NODE_ENV=production` y PostgreSQL real: 36/36. Cabeceras de seguridad, cron/webhook protegidos, respaldo→restauración: verificados a mano.
+- Stripe: probado solo contra servidor simulado. Claude real y Hostinger: **no verificados**.

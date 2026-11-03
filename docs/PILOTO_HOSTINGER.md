@@ -1,6 +1,8 @@
 # Lista para desplegar un piloto PRIVADO en Hostinger
 
-Estado: **nada de esto se ha hecho ni verificado** (no hay cuenta de Hostinger en esta sesión; no se desplegó nada). Lo de Hostinger marcado «confirmar» no lo pude comprobar con su documentación.
+> **Actualización 2026-11-03:** ver `PRELANZAMIENTO_REPORTE.md` e `INSTRUCCIONES_JOSE.md`. Bloqueante 2 (PostgreSQL) **verificado en local**; instalador y preflight creados; HTTPS, Hostinger y Claude real siguen sin verificar.
+
+Estado original: **nada de esto se ha hecho ni verificado** (no hay cuenta de Hostinger en esta sesión; no se desplegó nada). Lo de Hostinger marcado «confirmar» no lo pude comprobar con su documentación.
 
 ## A. Bloqueantes (sin esto no se debe invitar a nadie)
 | # | Falta | Detalle |
