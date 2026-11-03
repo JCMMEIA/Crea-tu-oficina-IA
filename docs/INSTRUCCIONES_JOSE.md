@@ -4,13 +4,13 @@ Todo lo demás ya está preparado y probado. Estos pasos son tuyos porque implic
 
 ## Parte 1 — Poner la plataforma en internet (privada)
 1. **Elige un nombre de dirección** (por ejemplo `app.tudominio.com`). Si no tienes dominio, cómpralo donde prefieras (cuesta dinero, decides tú).
-2. **Contrata el servidor en Hostinger**: un **VPS**, el plan **KVM 2** o similar. Al elegir sistema, escoge **«Ubuntu 24.04» limpio** (sin «OpenLiteSpeed» ni otras aplicaciones preinstaladas, porque estorban). *(Precio: míralo tú en Hostinger; yo no pude confirmarlo.)*
+2. **Contrata el servidor en Hostinger**: un **VPS KVM 2** (2 núcleos, 8 GB; basta de sobra, ver `VPS_KVM2_VERIFICACION.md`). Sistema: **«Ubuntu 24.04» limpio** (sin «OpenLiteSpeed» ni paneles preinstalados). Elige el plazo más corto que te permitan para un piloto, activa las **copias de seguridad** del VPS y, si te lo ofrece, entra con **llave SSH** en vez de contraseña. *(Precio y plazos: míralos tú; yo no pude confirmarlos.)*
 3. **Apunta tu dirección al servidor**: en el panel de tu dominio crea un registro tipo **A** con el nombre elegido y la **IP** que te muestra Hostinger. Espera unos minutos.
 4. **Abre la terminal del servidor** (en Hostinger, tu VPS → «Terminal» o conéctate por SSH). Pega esta línea y pulsa Enter:
    ```
    curl -fsSL https://raw.githubusercontent.com/JCMMEIA/crea-tu-oficina-ia/main/deploy/instalar.sh -o instalar.sh && bash instalar.sh
    ```
-5. Te hará 5 preguntas (tu dirección, tu correo, correos autorizados, correo de contacto). Contesta. Tarda unos 10 minutos.
+5. Escribe los correos **sin espacios** (separados solo por coma). Te hará 5 preguntas (tu dirección, tu correo, correos autorizados, correo de contacto). Contesta. Tarda unos 10 minutos.
 6. Al final debe decir **«✅ Listo»**. Abre tu dirección en el navegador: verás la página.
 7. **Crea tu cuenta** en `/registro` con el **mismo correo de operador**. Luego entra a `tu-dirección/admin`: es tu panel de prospectos.
 8. **Revisa el respaldo**: en la terminal escribe `cto-respaldo`. Debe decir «respaldo: …». Además, activa en Hostinger las copias («snapshots/backups») del VPS: así hay copia fuera del servidor.

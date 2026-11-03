@@ -18,11 +18,16 @@ ask CORREO_CERT "Tu correo (para avisos del certificado HTTPS):"
 ask CORREO_ADMIN "Tu correo de OPERADOR (con él entrarás al panel /admin):"
 ask CORREOS_PERMITIDOS "Correos que pueden crear cuenta, separados por coma:" "$CORREO_ADMIN"
 ask CORREO_CONTACTO "Correo de contacto para la política de privacidad:" "$CORREO_ADMIN"
+CORREOS_PERMITIDOS="$(echo "$CORREOS_PERMITIDOS" | tr -d '[:space:]')"  # sin espacios: el archivo de claves también lo leen scripts de shell
+for v in "$CORREO_CERT" "$CORREO_ADMIN" "$CORREOS_PERMITIDOS" "$CORREO_CONTACTO"; do [[ "$v" =~ ^[A-Za-z0-9@._+,-]+$ ]] || { echo "Valor no válido: '$v' (solo letras, números y @ . _ + - ,)"; exit 1; }; done
 [[ "$DOMINIO" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "Dominio inválido."; exit 1; }
 
 echo "== 2/8 Programas =="
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -y; apt-get install -y curl git ca-certificates gnupg ufw nginx certbot python3-certbot-nginx postgresql postgresql-contrib
+apt-get update -y; apt-get install -y curl git ca-certificates gnupg ufw fail2ban nginx certbot python3-certbot-nginx postgresql postgresql-contrib
+# Colchón de memoria (swap) de 2 GB si no hay: evita que el sistema mate procesos si una compilación o un pico lo necesita.
+if [ "$(swapon --show --noheadings | wc -l)" = 0 ]; then fallocate -l 2G /swapfile && chmod 600 /swapfile && mkfs.swap /swapfile >/dev/null 2>&1 || mkswap /swapfile >/dev/null; swapon /swapfile; grep -q /swapfile /etc/fstab || echo "/swapfile none swap sw 0 0" >> /etc/fstab; fi
+systemctl enable --now fail2ban >/dev/null 2>&1 || true
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then curl -fsSL https://deb.nodesource.com/setup_22.x | bash -; apt-get install -y nodejs; fi
 
 echo "== 3/8 Usuario y base de datos =="
@@ -55,7 +60,8 @@ After=network.target postgresql.service
 User=cto
 WorkingDirectory=$APP
 EnvironmentFile=$ENVF
-ExecStart=/usr/bin/npx next start -H 127.0.0.1 -p $PORT
+Environment=NODE_OPTIONS=--max-old-space-size=2048
+ExecStart=/usr/bin/node $APP/node_modules/next/dist/bin/next start -H 127.0.0.1 -p $PORT
 Restart=always
 RestartSec=3
 NoNewPrivileges=true
@@ -67,11 +73,12 @@ WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload; systemctl enable --now cto
 cat > /etc/nginx/sites-available/cto <<NGINX
+limit_req_zone \$binary_remote_addr zone=cto:10m rate=10r/s;
 server {
   listen 80; server_name $DOMINIO;
   client_max_body_size 1m;
   server_tokens off;
-  location / { proxy_pass http://127.0.0.1:$PORT; proxy_http_version 1.1; proxy_set_header Host \$host; proxy_set_header X-Forwarded-For \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme; proxy_read_timeout 120s; }
+  location / { limit_req zone=cto burst=60 nodelay; proxy_pass http://127.0.0.1:$PORT; proxy_http_version 1.1; proxy_set_header Host \$host; proxy_set_header X-Forwarded-For \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme; proxy_read_timeout 120s; }
 }
 NGINX
 ln -sf /etc/nginx/sites-available/cto /etc/nginx/sites-enabled/cto; rm -f /etc/nginx/sites-enabled/default; nginx -t && systemctl reload nginx
