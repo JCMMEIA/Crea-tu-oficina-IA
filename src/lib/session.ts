@@ -1,19 +1,29 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb, Db } from "@/server/db";
-import { actorFromToken, Actor } from "@/server/auth";
+import { actorFromToken, agencyActorFromToken, Actor, AgencyActor } from "@/server/auth";
 
 export const COOKIE = "cto_session";
+export const COMPANY_COOKIE = "cto_company";
 
-export async function currentActor(): Promise<{ db: Db; actor: Actor | null }> {
+export async function currentActor(): Promise<{ db: Db; actor: Actor | null; agency: AgencyActor | null }> {
   const db = await getDb();
-  const token = (await cookies()).get(COOKIE)?.value;
-  return { db, actor: await actorFromToken(db, token) };
+  const jar = await cookies();
+  const token = jar.get(COOKIE)?.value;
+  const agency = await agencyActorFromToken(db, token);
+  // La empresa elegida viene en una cookie, pero SIEMPRE se revalida en backend (membresía directa o pertenencia a la agencia).
+  const actor = await actorFromToken(db, token, jar.get(COMPANY_COOKIE)?.value) ?? (jar.get(COMPANY_COOKIE) ? await actorFromToken(db, token) : null);
+  return { db, actor, agency };
 }
-export async function requireActor(): Promise<{ db: Db; actor: Actor }> {
+export async function requireActor(): Promise<{ db: Db; actor: Actor; agency: AgencyActor | null }> {
   const r = await currentActor();
-  if (!r.actor) redirect("/login");
-  return { db: r.db, actor: r.actor };
+  if (!r.actor) redirect(r.agency ? "/agencia" : "/login");
+  return { db: r.db, actor: r.actor, agency: r.agency };
+}
+export async function requireAgency(): Promise<{ db: Db; agency: AgencyActor }> {
+  const r = await currentActor();
+  if (!r.agency) redirect(r.actor ? "/oficina" : "/login");
+  return { db: r.db, agency: r.agency };
 }
 export async function setSessionCookie(token: string) {
   (await cookies()).set(COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 7 * 86400 });

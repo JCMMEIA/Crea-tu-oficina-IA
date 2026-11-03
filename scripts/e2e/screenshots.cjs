@@ -1,0 +1,10 @@
+const { chromium } = require("playwright"); const DEMO = process.argv[2]; const base = "http://localhost:3111";
+(async()=>{const b=await chromium.launch();const p=await (await b.newContext({viewport:{width:1200,height:760}})).newPage();
+await p.addInitScript(()=>{const s=document.createElement("style");s.textContent="*{animation:none!important;transition:none!important}";document.addEventListener("DOMContentLoaded",()=>document.head.appendChild(s));});
+await p.goto(base+"/login");await p.fill("[name=email]","ana@demo.test");await p.fill("[name=password]","clave-muy-larga-1");await p.click("button");await p.waitForURL(/agencia/);
+const shot=async(url,name,scroll)=>{await p.goto(base+url);await p.waitForTimeout(500);if(scroll)await p.locator(scroll).first().scrollIntoViewIfNeeded().then(()=>p.evaluate(s=>document.querySelector("main").scrollIntoView(),null)).catch(()=>{});if(scroll){await p.evaluate((t)=>{const h=[...document.querySelectorAll("h2")].find(e=>e.textContent.includes(t));if(h)window.scrollTo(0,h.getBoundingClientRect().top+scrollY-20)},"Mi catálogo");}await p.waitForTimeout(300);await p.screenshot({path:`${DEMO}/${name}.png`});};
+await shot("/agencia","panel-agencia");
+await shot("/agencia/servicios","servicios","text=Mi catálogo");
+await p.goto(base+"/agencia/propuestas");await p.locator("tbody a").first().click();await p.waitForTimeout(600);await p.screenshot({path:`${DEMO}/propuesta.png`});
+await p.goto(base+"/agencia/clientes");await p.locator("button:has-text('Entrar a su oficina')").first().click();await p.waitForURL("**/oficina");await shot("/departamentos","oficina-cliente");
+await b.close();})();

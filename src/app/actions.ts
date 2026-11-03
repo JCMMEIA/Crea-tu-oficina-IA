@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/server/db";
-import { login, logout, signup } from "@/server/auth";
-import { COOKIE, requireActor, setSessionCookie } from "@/lib/session";
+import { agencyActorFromToken, login, logout, signup } from "@/server/auth";
+import { COMPANY_COOKIE, COOKIE, requireActor, setSessionCookie } from "@/lib/session";
 import { createCustomDepartment, createCustomEmployee, deleteEmployee, duplicateEmployee, hireFromTemplate, setEmployeeStatus, setPermissions, updateProfile } from "@/server/catalog/office";
 import { beginnerToSpec, getCurrentSkill, importSkill, restoreVersion, saveSkillVersion, skillSpecSchema } from "@/server/skills";
 import { createTask, decideApproval, DuplicateTaskError, retryTask, runWorkflow } from "@/server/tasks";
@@ -37,13 +37,18 @@ export async function signupAction(f: FormData) {
 }
 export async function loginAction(f: FormData) {
   const db = await getDb();
-  try { await setSessionCookie(await login(db, s(f, "email"), s(f, "password"))); }
-  catch (e: any) { if (e?.digest) throw e; return redirect("/login?error=" + encodeURIComponent(e.message)); }
-  redirect("/oficina");
+  let dest = "/oficina";
+  try {
+    const token = await login(db, s(f, "email"), s(f, "password"));
+    await setSessionCookie(token);
+    if (await agencyActorFromToken(db, token)) dest = "/agencia";
+  } catch (e: any) { if (e?.digest) throw e; return redirect("/login?error=" + encodeURIComponent(e.message)); }
+  (await cookies()).delete(COMPANY_COOKIE);
+  redirect(dest);
 }
 export async function logoutAction() {
   const db = await getDb(); const jar = await cookies(); const t = jar.get(COOKIE)?.value;
-  if (t) await logout(db, t); jar.delete(COOKIE); redirect("/login");
+  if (t) await logout(db, t); jar.delete(COOKIE); jar.delete(COMPANY_COOKIE); redirect("/login");
 }
 
 export async function profileAction(f: FormData) {

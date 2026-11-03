@@ -34,3 +34,10 @@ pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);borde
 .org .node{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-align:center;min-width:140px}
 .auth{max-width:420px;margin:8vh auto;padding:0 16px}
 .steps{display:flex;gap:6px;margin:12px 0 20px;flex-wrap:wrap}.steps a{padding:5px 12px;border-radius:999px;background:var(--chip);color:var(--text)}.steps a.on{background:var(--brand);color:var(--brand-text)}
+.cookie{position:fixed;bottom:12px;left:12px;right:12px;max-width:620px;margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:50;box-shadow:0 6px 24px #0003}
+.land{max-width:1060px;margin:0 auto;padding:0 20px}.land section{padding:44px 0}.land h1{font-size:clamp(1.9rem,5vw,3rem);line-height:1.1;margin:0 0 14px}.land .sub{font-size:1.15rem;color:var(--muted);max-width:720px}
+.land header{display:flex;justify-content:space-between;align-items:center;padding:16px 0;flex-wrap:wrap;gap:8px}.land .shot{width:100%;border:1px solid var(--line);border-radius:12px;display:block}
+.land .cols{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.land .big{padding:14px 22px;font-size:1.05rem}
+.land footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:.85rem}.land summary{cursor:pointer;font-weight:600;padding:8px 0}.land details{border-bottom:1px solid var(--line)}
+.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--brand);color:var(--brand-text);font-weight:700;margin-bottom:6px}
+.hp{position:absolute;left:-9999px;height:0;overflow:hidden}
