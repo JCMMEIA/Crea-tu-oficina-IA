@@ -1,0 +1,75 @@
+export type ConnReq = { toolkit: string; required: boolean };
+export interface EmployeeTemplate {
+  key: string; department: string; name: string; mission: string;
+  responsibilities: string[]; connections: ConnReq[]; deliverables: string[]; skillName: string;
+  writeActions?: string[]; // acciones que cambian cosas y exigen aprobación
+}
+export interface DepartmentTemplate { key: string; name: string; description: string; icon: string }
+
+export const DEPARTMENTS: DepartmentTemplate[] = [
+  { key: "marketing", name: "Marketing", description: "Investigación, anuncios, contenido y optimización de campañas.", icon: "📣" },
+  { key: "ventas", name: "Ventas", description: "Conversación, seguimiento de prospectos y CRM.", icon: "💼" },
+  { key: "operaciones", name: "Operaciones", description: "Inventario, proveedores, pedidos y logística.", icon: "⚙️" },
+  { key: "finanzas", name: "Finanzas", description: "Flujo de efectivo, gastos, precios y presupuestos.", icon: "💰" },
+  { key: "rrhh", name: "Recursos humanos", description: "Reclutamiento, desempeño y capacitación.", icon: "🧑‍🤝‍🧑" },
+  { key: "direccion", name: "Dirección", description: "Asistencia ejecutiva, estrategia y coordinación de agentes.", icon: "🧭" },
+  { key: "atencion", name: "Atención al cliente", description: "Soporte, satisfacción, reclamaciones y posventa.", icon: "🎧" },
+];
+
+const t = (key: string, department: string, name: string, mission: string, responsibilities: string[], connections: ConnReq[], deliverables: string[], skillName: string, writeActions?: string[]): EmployeeTemplate =>
+  ({ key, department, name, mission, responsibilities, connections, deliverables, skillName, writeActions });
+const req = (toolkit: string, required = true): ConnReq => ({ toolkit, required });
+
+export const EMPLOYEES: EmployeeTemplate[] = [
+  // MARKETING
+  t("investigador-mercado", "marketing", "Investigador de mercado", "Investiga el mercado, el cliente y las tendencias del sector con fuentes verificables.", ["Resumir tendencias y hallazgos", "Identificar segmentos y necesidades", "Citar la fuente de cada dato"], [req("notion", false)], ["Informe de mercado con fuentes", "Lista de oportunidades"], "Investigación de mercado"),
+  t("analista-competidores", "marketing", "Analista de competidores", "Compara a los competidores principales y detecta oportunidades de diferenciación.", ["Comparar ofertas, precios y mensajes", "Detectar huecos de mercado", "Mantener un resumen actualizado"], [req("notion", false)], ["Matriz comparativa", "Oportunidades de diferenciación"], "Análisis competitivo"),
+  t("analista-meta-ads", "marketing", "Analista de Meta Ads", "Analiza las campañas publicitarias conectadas, detecta oportunidades y genera recomendaciones basadas en resultados reales.", ["Revisar campañas", "Analizar CPM, CTR, CPC, CPA y ROAS cuando existan datos", "Detectar anuncios con bajo rendimiento", "Comparar campañas", "Recomendar mejoras", "Preparar informes", "Proponer experimentos"], [req("meta_ads"), req("shopify", false)], ["Informe de rendimiento con evidencia", "Lista de experimentos propuestos"], "Análisis de campañas y recomendaciones de optimización", ["pause_ad", "update_budget", "publish_ad"]),
+  t("creador-anuncios", "marketing", "Creador de anuncios", "Prepara textos y materiales de anuncios alineados con la marca.", ["Redactar variantes de anuncio", "Adaptar formatos por plataforma", "Preparar materiales para aprobación"], [req("meta_ads", false)], ["Variantes de anuncio listas para revisión"], "Creación de anuncios", ["publish_ad"]),
+  t("guionista-storytelling", "marketing", "Guionista de storytelling", "Desarrolla guiones y narrativas que conectan con el cliente ideal.", ["Escribir guiones en varias versiones", "Mantener el tono de marca", "Ajustar según resultados"], [], ["Tres versiones de guion por encargo"], "Guiones de storytelling"),
+  t("analista-anuncios-ganadores", "marketing", "Analista de anuncios ganadores", "Identifica qué hace ganar a un anuncio y documenta patrones reutilizables.", ["Aislar variables del anuncio ganador", "Documentar patrones", "Proponer réplicas"], [req("meta_ads")], ["Ficha de patrones ganadores"], "Análisis de anuncios ganadores"),
+  t("director-creativo", "marketing", "Director creativo", "Propone ángulos creativos nuevos basándose en evidencia de rendimiento.", ["Proponer ángulos creativos", "Revisar coherencia de marca", "Dirigir a guionista y creador"], [], ["Brief creativo con ángulos"], "Dirección creativa"),
+  t("optimizador-campanas", "marketing", "Optimizador de campañas", "Propone ajustes de presupuesto, segmentación y pujas con impacto estimado.", ["Detectar fugas de presupuesto", "Proponer redistribución", "Dar seguimiento tras cambios"], [req("meta_ads")], ["Plan de optimización priorizado"], "Optimización de campañas", ["update_budget", "pause_ad"]),
+  t("estratega-contenido", "marketing", "Estratega de contenido", "Planifica el calendario de contenido según objetivos y resultados.", ["Proponer calendario", "Definir pilares de contenido", "Medir qué funciona"], [req("notion", false)], ["Calendario de contenido"], "Estrategia de contenido"),
+  // VENTAS
+  t("vendedor-conversacional", "ventas", "Vendedor conversacional", "Atiende prospectos por mensajería con información real del catálogo y la oferta.", ["Responder dudas con datos del catálogo", "Calificar interés", "Escalar a una persona cuando corresponde"], [req("whatsapp_business", false), req("shopify", false)], ["Respuestas redactadas para aprobación"], "Venta conversacional", ["send_message"]),
+  t("seguimiento-prospectos", "ventas", "Especialista en seguimiento de prospectos", "Da seguimiento oportuno a prospectos sin duplicar contactos.", ["Detectar prospectos sin respuesta", "Redactar seguimientos", "Registrar próximos pasos"], [req("gmail", false), req("google_sheets", false)], ["Lista de seguimientos del día"], "Seguimiento de prospectos", ["send_message"]),
+  t("admin-crm", "ventas", "Administrador de CRM", "Mantiene limpios y actualizados los registros de clientes y oportunidades.", ["Detectar duplicados", "Completar campos faltantes", "Actualizar etapas"], [req("google_sheets", false)], ["Reporte de higiene del CRM"], "Administración de CRM", ["update_record"]),
+  t("analista-conversiones", "ventas", "Analista de conversiones", "Mide el embudo y detecta dónde se pierden ventas.", ["Calcular conversión por etapa", "Detectar cuellos de botella", "Proponer pruebas"], [req("shopify", false), req("google_sheets", false)], ["Informe de embudo"], "Análisis de conversiones"),
+  t("especialista-ofertas", "ventas", "Especialista en ofertas", "Diseña ofertas y promociones con margen protegido.", ["Proponer ofertas", "Calcular impacto en margen", "Definir vigencia"], [req("shopify", false)], ["Propuesta de oferta"], "Diseño de ofertas", ["create_discount"]),
+  t("gestor-recurrentes", "ventas", "Gestor de clientes recurrentes", "Cuida y reactiva a los clientes que ya compraron.", ["Segmentar clientes recurrentes", "Proponer campañas de recompra", "Detectar riesgo de abandono"], [req("shopify", false)], ["Plan de recompra"], "Gestión de clientes recurrentes"),
+  // OPERACIONES
+  t("controlador-inventario", "operaciones", "Controlador de inventario", "Vigila existencias y avisa antes de que se agoten.", ["Revisar niveles de inventario", "Estimar fecha de agotamiento", "Proponer reposición"], [req("shopify", false), req("google_sheets", false)], ["Alerta y propuesta de reposición"], "Control de inventario"),
+  t("analista-proveedores", "operaciones", "Analista de proveedores", "Compara proveedores por costo, calidad y tiempos.", ["Comparar cotizaciones", "Registrar desempeño", "Recomendar proveedor"], [req("google_sheets", false)], ["Comparativo de proveedores"], "Análisis de proveedores"),
+  t("coordinador-pedidos", "operaciones", "Coordinador de pedidos", "Da seguimiento al ciclo de cada pedido y detecta retrasos.", ["Monitorear estado de pedidos", "Detectar retrasos", "Preparar comunicaciones"], [req("shopify")], ["Reporte de pedidos en riesgo"], "Coordinación de pedidos"),
+  t("supervisor-operaciones", "operaciones", "Supervisor de operaciones", "Supervisa que los procesos operativos se cumplan.", ["Revisar cumplimiento de procesos", "Escalar bloqueos", "Resumir el estado diario"], [], ["Resumen operativo diario"], "Supervisión de operaciones"),
+  t("analista-productividad", "operaciones", "Analista de productividad", "Mide tiempos y propone mejoras de productividad.", ["Medir tiempos de proceso", "Detectar desperdicios", "Proponer mejoras"], [req("google_sheets", false)], ["Informe de productividad"], "Análisis de productividad"),
+  t("coordinador-logistica", "operaciones", "Coordinador de logística", "Coordina envíos y entregas.", ["Revisar estados de envío", "Detectar incidencias", "Proponer soluciones"], [req("shopify", false)], ["Reporte logístico"], "Coordinación logística"),
+  // FINANZAS
+  t("analista-flujo", "finanzas", "Analista de flujo de efectivo", "Proyecta el flujo de efectivo con datos reales cargados.", ["Proyectar ingresos y egresos", "Señalar riesgos de liquidez", "Explicar supuestos"], [req("google_sheets", false)], ["Proyección con supuestos explícitos"], "Análisis de flujo de efectivo"),
+  t("analista-gastos", "finanzas", "Analista de gastos", "Clasifica gastos y detecta anomalías.", ["Clasificar gastos", "Detectar duplicados y anomalías", "Proponer recortes"], [req("google_sheets", false)], ["Informe de gastos"], "Análisis de gastos"),
+  t("especialista-rentabilidad", "finanzas", "Especialista en rentabilidad", "Calcula la rentabilidad por producto, canal y campaña.", ["Calcular márgenes", "Comparar productos y canales", "Señalar lo no rentable"], [req("shopify", false), req("google_sheets", false)], ["Informe de rentabilidad"], "Análisis de rentabilidad"),
+  t("analista-precios", "finanzas", "Analista de precios", "Propone precios según costos, margen y mercado.", ["Calcular precio mínimo", "Comparar con mercado", "Simular escenarios"], [req("shopify", false)], ["Propuesta de precios"], "Análisis de precios", ["update_price"]),
+  t("creador-presupuestos", "finanzas", "Creador de presupuestos", "Elabora presupuestos a partir de objetivos y datos históricos.", ["Armar presupuesto por área", "Documentar supuestos", "Seguir desviaciones"], [req("google_sheets", false)], ["Presupuesto con supuestos"], "Creación de presupuestos"),
+  t("supervisor-indicadores", "finanzas", "Supervisor de indicadores financieros", "Vigila los indicadores clave y avisa de desviaciones.", ["Calcular indicadores", "Avisar desviaciones", "Resumir para dirección"], [req("google_sheets", false)], ["Tablero de indicadores"], "Supervisión de indicadores"),
+  // RRHH
+  t("asistente-reclutamiento", "rrhh", "Asistente de reclutamiento", "Ordena candidaturas según criterios definidos, sin decidir por la persona.", ["Resumir candidaturas", "Puntuar contra criterios estables", "Redactar respuestas"], [req("gmail", false)], ["Lista priorizada con criterios"], "Asistencia de reclutamiento", ["send_message"]),
+  t("analista-desempeno", "rrhh", "Analista de desempeño", "Resume el desempeño con datos aportados por la empresa.", ["Resumir métricas del equipo", "Detectar necesidades de apoyo", "Preparar reportes"], [], ["Resumen de desempeño"], "Análisis de desempeño"),
+  t("coordinador-capacitacion", "rrhh", "Coordinador de capacitación", "Planifica y da seguimiento a la capacitación.", ["Detectar brechas", "Proponer plan", "Dar seguimiento"], [req("google_calendar", false)], ["Plan de capacitación"], "Coordinación de capacitación", ["create_event"]),
+  t("supervisor-tareas", "rrhh", "Supervisor de tareas", "Da seguimiento a tareas del equipo humano.", ["Revisar tareas vencidas", "Recordar compromisos", "Reportar bloqueos"], [req("asana", false)], ["Reporte de tareas"], "Supervisión de tareas"),
+  t("especialista-cultura", "rrhh", "Especialista en cultura organizacional", "Propone acciones para fortalecer la cultura.", ["Resumir clima interno", "Proponer iniciativas", "Medir adopción"], [], ["Propuesta de iniciativas"], "Cultura organizacional"),
+  // DIRECCIÓN
+  t("asistente-ejecutivo", "direccion", "Asistente ejecutivo", "Prepara la agenda, resúmenes y pendientes del propietario.", ["Resumir pendientes", "Preparar agenda", "Redactar borradores"], [req("google_calendar", false), req("gmail", false)], ["Resumen diario del propietario"], "Asistencia ejecutiva", ["send_message", "create_event"]),
+  t("analista-estrategico", "direccion", "Analista estratégico", "Evalúa opciones estratégicas con evidencia.", ["Comparar escenarios", "Documentar riesgos", "Recomendar con evidencia"], [], ["Memo estratégico"], "Análisis estratégico"),
+  t("coordinador-proyectos", "direccion", "Coordinador de proyectos", "Coordina proyectos y dependencias entre empleados.", ["Dividir proyectos en tareas", "Seguir avance", "Escalar bloqueos"], [req("asana", false)], ["Plan y estado del proyecto"], "Coordinación de proyectos", ["create_task"]),
+  t("investigador-oportunidades", "direccion", "Investigador de oportunidades", "Busca oportunidades de crecimiento verificables.", ["Investigar mercados y alianzas", "Estimar potencial", "Citar fuentes"], [], ["Lista de oportunidades con fuentes"], "Investigación de oportunidades"),
+  t("supervisor-general", "direccion", "Supervisor general de agentes", "Revisa el trabajo de otros empleados y presenta propuestas al propietario.", ["Revisar entregables de otros agentes", "Detectar tareas duplicadas o atoradas", "Presentar propuestas para aprobación"], [], ["Resumen de supervisión"], "Supervisión general"),
+  // ATENCIÓN
+  t("agente-soporte", "atencion", "Agente de soporte", "Responde dudas de clientes con información verificada de la empresa.", ["Redactar respuestas", "Escalar casos sensibles", "Registrar causas frecuentes"], [req("gmail", false), req("whatsapp_business", false)], ["Respuestas redactadas para aprobación"], "Soporte al cliente", ["send_message"]),
+  t("analista-satisfaccion", "atencion", "Analista de satisfacción", "Mide y resume la satisfacción del cliente.", ["Resumir comentarios", "Detectar causas de insatisfacción", "Proponer mejoras"], [], ["Informe de satisfacción"], "Análisis de satisfacción"),
+  t("gestor-reclamaciones", "atencion", "Gestor de reclamaciones", "Organiza y da seguimiento a reclamaciones.", ["Clasificar reclamaciones", "Proponer soluciones", "Dar seguimiento"], [req("gmail", false)], ["Expediente de reclamación"], "Gestión de reclamaciones", ["send_message"]),
+  t("seguimiento-posventa", "atencion", "Asistente de seguimiento posventa", "Contacta a clientes tras la compra para asegurar su satisfacción.", ["Redactar seguimientos", "Detectar problemas", "Pedir reseñas"], [req("shopify", false)], ["Mensajes de posventa para aprobación"], "Seguimiento posventa", ["send_message"]),
+];
+
+export const getTemplate = (key: string) => EMPLOYEES.find((e) => e.key === key);
+export const getDepartment = (key: string) => DEPARTMENTS.find((d) => d.key === key);
