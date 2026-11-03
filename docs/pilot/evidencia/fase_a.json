@@ -1,0 +1,188 @@
+{
+ "fase": "a",
+ "pasos": [
+  {
+   "n": "1",
+   "nombre": "Crear agencia y empresa cliente",
+   "estado": "real",
+   "resultado": "OK",
+   "evidencia": {
+    "agencia": "Nova AI Solutions",
+    "cliente": "Verde Vivo"
+   }
+  },
+  {
+   "n": "2",
+   "nombre": "Contratar los tres empleados",
+   "estado": "real",
+   "resultado": "OK",
+   "evidencia": [
+    {
+     "name": "Controlador de inventario",
+     "area": "Operaciones"
+    },
+    {
+     "name": "Analista de proveedores",
+     "area": "Operaciones"
+    },
+    {
+     "name": "Supervisor general de agentes",
+     "area": "Dirección"
+    }
+   ]
+  },
+  {
+   "n": "3",
+   "nombre": "Oficina 3D generada con los empleados reales (escena)",
+   "estado": "real",
+   "resultado": "OK",
+   "evidencia": {
+    "zonas": [
+     {
+      "area": "Dirección",
+      "empleados": [
+       "Supervisor general de agentes"
+      ],
+      "estado": "Listo"
+     },
+     {
+      "area": "Operaciones",
+      "empleados": [
+       "Controlador de inventario",
+       "Analista de proveedores"
+      ],
+      "estado": "Listo"
+     }
+    ],
+    "marca": "Nova AI Solutions",
+    "nota": "La captura visual se toma en la prueba de navegador"
+   }
+  },
+  {
+   "n": "4",
+   "nombre": "Cargar inventario ficticio y comprobar el cálculo",
+   "estado": "real",
+   "resultado": "OK",
+   "evidencia": {
+    "bajo_minimo": [
+     "Fertilizante orgánico 1 L: 3/6 → +22",
+     "Maceta de barro 20 cm: 4/10 → +26",
+     "Sustrato universal 5 kg: 2/8 → +18"
+    ],
+    "total_unidades": 66,
+    "verificacion_independiente_sql": {
+     "n": 3,
+     "u": 66
+    },
+    "origen_de_los_datos": "ficticios, definidos por el equipo técnico (el inventario «definido anteriormente» no se encontró)"
+   }
+  },
+  {
+   "n": "5",
+   "nombre": "Ejecutar la automatización con el programador",
+   "estado": "mixto",
+   "resultado": "OK",
+   "evidencia": {
+    "ejecucion_programador": {
+     "status": "completed",
+     "attempt": 1
+    },
+    "real": "programador, motor de tareas, herramientas de inventario, base de datos",
+    "simulado": "las decisiones del modelo de IA (guion), NO Claude",
+    "llamadas_simuladas": [
+     "Controlador de inventario → inventario__leer_inventario",
+     "Controlador de inventario → inventario__calcular_resurtido",
+     "Controlador de inventario → delegate_task",
+     "Controlador de inventario",
+     "Analista de proveedores → inventario__calcular_resurtido",
+     "Analista de proveedores → inventario__guardar_borrador_resurtido",
+     "Analista de proveedores → delegate_task",
+     "Analista de proveedores",
+     "Supervisor general de agentes → inventario__solicitar_resurtido"
+    ]
+   }
+  },
+  {
+   "n": "6",
+   "nombre": "Delegación y resultados (3 empleados, 3 niveles)",
+   "estado": "mixto",
+   "resultado": "OK",
+   "evidencia": {
+    "tareas": [
+     {
+      "tarea": "Supervisor general de agentes",
+      "estado": "awaiting_approval",
+      "nivel": 2,
+      "padre": "Analista de proveedores",
+      "eventos": [
+       "requested",
+       "started",
+       "approval_requested",
+       "awaiting_approval"
+      ]
+     },
+     {
+      "tarea": "Analista de proveedores",
+      "estado": "completed",
+      "nivel": 1,
+      "padre": "Controlador de inventario",
+      "eventos": [
+       "requested",
+       "started",
+       "tool_executed",
+       "tool_executed",
+       "delegated",
+       "completed"
+      ]
+     },
+     {
+      "tarea": "Controlador de inventario",
+      "estado": "completed",
+      "nivel": 0,
+      "padre": null,
+      "eventos": [
+       "requested",
+       "started",
+       "tool_executed",
+       "tool_executed",
+       "delegated",
+       "completed"
+      ]
+     }
+    ],
+    "borrador": {
+     "id": "3b02e10d-94b4-4a99-a97f-358155bd39e8",
+     "estado": "borrador",
+     "unidades": 66,
+     "productos": [
+      "Fertilizante orgánico 1 L +22",
+      "Maceta de barro 20 cm +26",
+      "Sustrato universal 5 kg +18"
+     ]
+    },
+    "aprobacion": {
+     "estado": "pending",
+     "resumen": "Supervisor general de agentes solicita: resurtir 3 productos (66 unidades) — no se envía ninguna compra",
+     "datos": {
+      "draft_id": "3b02e10d-94b4-4a99-a97f-358155bd39e8"
+     }
+    }
+   }
+  },
+  {
+   "n": "7",
+   "nombre": "Solicitud de aprobación registrada, sin ejecutar ninguna compra",
+   "estado": "real",
+   "resultado": "OK",
+   "evidencia": {
+    "estado": "pending",
+    "resumen": "Supervisor general de agentes solicita: resurtir 3 productos (66 unidades) — no se envía ninguna compra",
+    "datos": {
+     "draft_id": "3b02e10d-94b4-4a99-a97f-358155bd39e8"
+    },
+    "borrador": "borrador",
+    "acciones_externas_ejecutadas": 0
+   }
+  }
+ ]
+}

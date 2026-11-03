@@ -1,0 +1,51 @@
+{
+ "fase": "telegram",
+ "pasos": [
+  {
+   "n": "8a",
+   "nombre": "Vincular Telegram del propietario (código de un solo uso)",
+   "estado": "simulado",
+   "resultado": "OK",
+   "evidencia": {
+    "webhook_con_secreto_incorrecto": 401,
+    "bienvenida": "¡Listo! Tu Telegram quedó vinculado.",
+    "destino": "5551"
+   }
+  },
+  {
+   "n": "8b",
+   "nombre": "Aviso de aprobación llega por Telegram con el resumen correcto",
+   "estado": "simulado",
+   "resultado": "OK",
+   "evidencia": "Verde Vivo\n🔐 Aprobación pendiente: Supervisor general de agentes solicita: resurtir 3 productos (66 unidades) — no se envía ninguna compra\nDatos: {\"draft_id\":\"1ac22319-1218-416a-a7c4-babd4ed053d9\"}\nPara aprobar responde: APROBAR C349P2\nPara rechazar: RECHAZAR C349P2\n(El código vence en 30 min y sirve solo para esta acción.)"
+  },
+  {
+   "n": "8c",
+   "nombre": "Aprobar por Telegram: «sí» no basta; APROBAR + CONFIRMAR",
+   "estado": "simulado",
+   "resultado": "OK",
+   "evidencia": {
+    "tras_si_ok_o_confirmar_sin_aprobar": "borrador",
+    "aviso_de_confirmacion": "⚠️ Acción sensible: Supervisor general de agentes solicita: resurtir 3 productos (66 unidades) — no se envía ninguna compra",
+    "estado_final": "aprobado_sin_enviar",
+    "respuesta_final": "✅ Aprobada y ejecutada: Supervisor general de agentes solicita: resurtir 3 productos (66 unidades) — no se envía ninguna compra",
+    "compras_enviadas": 0
+   }
+  },
+  {
+   "n": "8d",
+   "nombre": "Telegram REAL (bot verdadero)",
+   "estado": "no_verificado",
+   "resultado": "PENDIENTE",
+   "evidencia": "No se probó: no hay token de bot autorizado. Ejecutar «npm run pilot:telegram» cuando exista (verifica el bot sin enviar mensajes)."
+  },
+  {
+   "n": "9",
+   "nombre": "Claude REAL (API de Anthropic)",
+   "estado": "no_verificado",
+   "resultado": "PENDIENTE",
+   "evidencia": "No se probó: no hay ANTHROPIC_API_KEY. Ejecutar «npm run pilot:claude» cuando exista (usa datos ficticios y un tope de gasto)."
+  }
+ ],
+ "mensajes_recibidos_por_el_servidor_simulado": 6
+}

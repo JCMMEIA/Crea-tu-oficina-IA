@@ -1,0 +1,88 @@
+{
+ "nota": "Pruebas de navegador reales sobre la base del piloto. IA: simulada en la fase a (no es Claude).",
+ "pruebas": [
+  {
+   "prueba": "la agencia «Nova AI Solutions» entra a su panel",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "el cliente «Verde Vivo» aparece en Mis clientes",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "oficina 3D: 3 empleados en 2 áreas (Operaciones y Dirección) + la zona «Tareas automáticas» de la automatización real",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "la leyenda muestra Operaciones · 2, Dirección · 1 y Tareas automáticas · 1",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "al tocar un empleado en el 3D aparecen sus acciones",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "inventario: 10 productos, 3 bajo el mínimo",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "tablero: 3 bajo el mínimo y 66 unidades por reponer",
+   "resultado": "OK",
+   "dato": "📦 10 Productos ⚠️ 3 Bajo el mínimo 🔁 66 Unidades por reponer"
+  },
+  {
+   "prueba": "los 3 productos son: maceta, sustrato y fertilizante",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "el producto exactamente en el mínimo (grava) NO se marca como bajo",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "borrador de resurtido: 66 unidades, «Borrador (no enviado)»",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "el historial muestra los 3 empleados de la cadena",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "estados visibles: «Listos» y «Esperan tu permiso»",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "seguimiento de la tarea inicial: muestra la delegación paso a paso",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "aprobaciones: solicitud pendiente «resurtir 3 productos (66 unidades)»",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "la solicitud aclara que no se envía ninguna compra",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "móvil: la aprobación se ve sin desplazamiento horizontal",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "aprobar desde la interfaz: confirmación visible",
+   "resultado": "OK",
+   "dato": "✅ Aprobada y ejecutada (ver evidencia en la tarea)."
+  },
+  {
+   "prueba": "el borrador queda «Aprobado — NO se envió ninguna compra»",
+   "resultado": "OK"
+  },
+  {
+   "prueba": "«Revisar inventario ahora» no duplica una revisión reciente (o falla con honestidad si no hay IA)",
+   "resultado": "OK",
+   "dato": "← Historial de trabajo  [Auto] Control inteligente de inventario 😕 Ya pediste esto hace poco. Mira la tarea q"
+  },
+  {
+   "prueba": "sin errores de JavaScript (0)",
+   "resultado": "OK"
+  }
+ ]
+}
