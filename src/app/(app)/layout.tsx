@@ -25,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/construir">Construye tu oficina</Link>
         <Link href="/departamentos">Mis departamentos</Link>
         <Link href="/organigrama">Organigrama</Link>
+        <Link href="/oficina-3d">Oficina 3D</Link>
         <small>Configuración</small>
         <Link href="/conexiones">Conecta tu empresa</Link>
         <Link href="/conocimiento">Conocimiento</Link>

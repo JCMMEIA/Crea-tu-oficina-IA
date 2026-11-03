@@ -3,6 +3,8 @@ import { requireActor, money, when } from "@/lib/session";
 import { StatusChip, Empty } from "@/lib/ui";
 import { usageSummary } from "@/server/usage";
 import { getProvider } from "@/server/models";
+import { companyScene } from "@/server/office3d";
+import { IsoSvg } from "@/components/office3d/iso";
 
 export default async function Oficina() {
   const { db, actor } = await requireActor(); const c = actor.companyId;
@@ -18,6 +20,7 @@ export default async function Oficina() {
   const recent = await db.query("SELECT t.id,t.title,t.status,t.created_at,e.name en FROM tasks t JOIN employees e ON e.id=t.employee_id WHERE t.company_id=$1 ORDER BY t.created_at DESC LIMIT 6", [c]);
   const prof = (await db.query("SELECT profile FROM companies WHERE id=$1", [c]))[0].profile;
   const steps: [boolean, string, string][] = [[Object.keys(prof).length > 0, "Completa el perfil de tu negocio", "/construir?paso=1"], [emps > 0, "Contrata tu primer empleado", "/construir?paso=3"], [conn > 0, "Conecta una aplicación", "/conexiones"], [done > 0, "Asígnale una primera tarea", "/departamentos"]];
+  const scene = await companyScene(db, actor);
   const max = Math.max(0.0001, ...u.byEmployee.map((e: any) => e.cost_usd));
   return (<><h1>Panel de dirección</h1>
     {!getProvider() && <div className="notice">⚠️ La IA no está configurada: los empleados no pueden ejecutar tareas. Falta <code>ANTHROPIC_API_KEY</code> (ver <Link href="/ayuda">Ayuda</Link>). No se muestran resultados simulados.</div>}
@@ -27,5 +30,7 @@ export default async function Oficina() {
       <div style={{ background: "var(--chip)", borderRadius: 4 }}><div className="bar" style={{ width: `${Math.min(100, (u.spent / u.budget) * 100)}%` }} /></div>
       {u.byEmployee.length ? <table><tbody>{u.byEmployee.map((e: any) => <tr key={e.name}><td>{e.name}</td><td>{e.calls} llamadas</td><td>{money(e.cost_usd)}<div className="bar" style={{ width: `${(e.cost_usd / max) * 100}%` }} /></td></tr>)}</tbody></table> : <p className="muted">Sin consumo todavía.</p>}</div>
       <div className="card"><h2>Actividad reciente</h2>{recent.length ? <table><tbody>{recent.map((t) => <tr key={t.id}><td><Link href={`/actividad/${t.id}`}>{t.title}</Link><div className="muted">{t.en} · {when(t.created_at)}</div></td><td><StatusChip s={t.status} /></td></tr>)}</tbody></table> : <Empty>Aún no hay actividad real. Asigna una tarea a un empleado.</Empty>}</div></div>
+    <div className="card o3d-card" style={{ marginTop: 12 }}><div style={{ height: 170 }}><IsoSvg scene={scene} showLabels={false} label="Miniatura de tu oficina" /></div>
+      <div><h2>Visualiza tu Oficina 3D</h2><p className="muted">{emps > 0 ? `Mira cómo se organizan tus ${emps} empleado(s) de IA en ${scene.stats.zones} área(s).` : "Contrata a tus primeros empleados y verás tu oficina tomar forma."}</p><Link className="btn" href="/oficina-3d">Abrir mi oficina 3D</Link></div></div>
     <p className="muted">Los indicadores empresariales (ventas, ROAS…) aparecerán cuando conectes tus aplicaciones; hoy no se muestran datos de ejemplo.</p></>);
 }

@@ -5,6 +5,8 @@ import { DEPARTMENTS, EMPLOYEES } from "@/server/catalog/data";
 import { getToolkit } from "@/server/connectors/catalog";
 import { customDepartmentAction, hireAction, profileAction } from "../../actions";
 import { getProvider } from "@/server/models";
+import { companyScene } from "@/server/office3d";
+import { OfficeViewer } from "@/components/office3d/OfficeViewer";
 
 const FIELDS: [string, string, boolean][] = [["sector", "Sector o industria", false], ["products", "Productos y servicios", true], ["clients", "Tipo de clientes", false], ["country", "País y mercado", false], ["website", "Sitio web", false], ["social", "Redes sociales", false], ["competitors", "Competidores principales", true], ["goals", "Objetivos empresariales", true], ["problems", "Problemas actuales", true], ["apps", "Aplicaciones que utilizas", false]];
 
@@ -17,6 +19,7 @@ export default async function Construir({ searchParams }: { searchParams: Promis
   const conns = new Set((await db.query("SELECT toolkit FROM connections WHERE company_id=$1 AND status='conectado'", [actor.companyId])).map((c) => c.toolkit as string));
   const hired = new Set(myEmps.map((e) => e.template_key as string));
   const aiOn = !!getProvider();
+  const scene = paso === 4 ? await companyScene(db, actor) : null;
   return (<>
     <h1>Construye tu oficina</h1><p className="muted">Solo contratas lo que necesitas. Puedes omitir pasos y volver después.</p>
     <div className="steps">{["1 · Perfil", "2 · Departamentos", "3 · Empleados", "4 · Tu oficina"].map((l, i) => <Link key={l} href={`/construir?paso=${i + 1}`} className={paso === i + 1 ? "on" : ""}>{l}</Link>)}</div>
@@ -47,6 +50,9 @@ export default async function Construir({ searchParams }: { searchParams: Promis
           <form action={hireAction}><input type="hidden" name="template" value={e.key} /><input type="hidden" name="next" value={`/construir?paso=3${sp.dep ? "&dep=" + sp.dep : ""}`} />
             <button disabled={hired.has(e.key)}>{hired.has(e.key) ? "Ya en tu oficina" : "Agregar a mi oficina"}</button></form></div>);
       })}</div></>}
-    {paso === 4 && <p><Link className="btn" href="/organigrama">Ver el organigrama de mi oficina</Link> <Link className="btn ghost" href="/oficina">Ir al panel de dirección</Link></p>}
+    {paso === 3 && myEmps.length > 0 && <p className="notice ok">Ya tienes {myEmps.length} empleado(s). <Link href="/construir?paso=4"><b>Visualiza tu Oficina 3D →</b></Link></p>}
+    {paso === 4 && scene && <><h2>Visualiza tu Oficina 3D</h2><p className="muted">Así queda tu estructura con lo que elegiste. Puedes volver al paso 3 para sumar más empleados.</p>
+      <OfficeViewer scene={scene} testId="office-wizard" height={520} emptyCta={{ href: "/construir?paso=3", label: "Elegir mis empleados" }} />
+      <p style={{ marginTop: 12 }}><Link className="btn" href="/oficina-3d">Abrir en pantalla completa</Link> <Link className="btn ghost" href="/organigrama">Ver organigrama</Link> <Link className="btn ghost" href="/oficina">Ir al panel de dirección</Link></p></>}
   </>);
 }

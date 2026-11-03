@@ -42,7 +42,7 @@ export async function enterClientAction(f: FormData) {
   const { db, agency } = await requireAgency();
   try { await actAs(db, agency, s(f, "companyId")); } catch { return back("/agencia/clientes", "Cliente no encontrado."); }
   (await cookies()).set(COMPANY_COOKIE, s(f, "companyId"), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
-  redirect(s(f, "to") === "construir" ? "/construir?paso=3" : "/oficina");
+  redirect(s(f, "to") === "construir" ? "/construir?paso=3" : s(f, "to") === "oficina3d" ? "/oficina-3d" : "/oficina");
 }
 export async function leaveClientAction() { (await cookies()).delete(COMPANY_COOKIE); redirect("/agencia/clientes"); }
 

@@ -18,6 +18,7 @@ export default async function AgencyLayout({ children }: { children: React.React
         <small>Mi agencia</small>
         <Link href="/agencia">Panel de agencia</Link>
         <Link href="/agencia/clientes">Empresas clientes</Link>
+        <Link href="/agencia/oficina-3d">Oficina 3D</Link>
         <Link href="/agencia/servicios">Catálogo de servicios</Link>
         <Link href="/agencia/skills">Skills y agentes</Link>
         <Link href="/agencia/propuestas">Propuestas</Link>
