@@ -2,26 +2,28 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { currentActor } from "@/lib/session";
 import { LeadForm } from "@/lib/leadform";
-import { pickUtm } from "@/server/leads";
+import { CtaLink } from "@/lib/attribution";
 
-export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+export const metadata = { title: "Crea tu Oficina IA — tu propia agencia de inteligencia artificial", description: "Plataforma de marca blanca: ofrece servicios de inteligencia artificial a tus clientes con empleados digitales, sin programar. Pide una demostración." };
+
+export default async function Home() {
   const { actor, agency } = await currentActor();
   if (agency) redirect("/agencia");
   if (actor) redirect("/oficina");
-  const utm = pickUtm(await searchParams);
   const faq: [string, string][] = [
     ["¿Necesito saber de tecnología?", "No. Todo se hace tocando tarjetas y contestando preguntas sencillas. Si te atoras, hay una guía y un asistente que te orienta."],
     ["¿Me garantizan clientes o ganancias?", "No. Te damos las herramientas para armar y probar tu negocio. Los clientes y los ingresos dependen de ti."],
     ["¿Puedo probarlo sin conectar nada?", "Sí. Hay una prueba con un negocio inventado. Si la inteligencia artificial todavía no está activada, verás un ejemplo claramente marcado como ilustrativo."],
     ["¿Se publica o se envía algo sin mi permiso?", "Nunca. Publicar, enviar mensajes o cambiar precios siempre espera tu permiso."],
     ["¿Qué aplicaciones puedo conectar?", "Estamos preparando WhatsApp, Telegram, Instagram, Facebook, Shopify, Google Drive, Gmail y Calendario. Cada una dice su estado real: ninguna se presenta como lista si aún no lo está."],
-    ["¿Cuánto cuesta?", "Ahora estamos en acceso anticipado y no cobramos nada. Si algún día cobramos, te avisamos antes."],
+    ["¿Cuánto cuesta?", "Ahora estamos en acceso anticipado y no cobramos nada. Ya puedes ver los planes y sus límites en la página de planes; los precios y la compra todavía no están abiertos. Te avisamos antes de cobrar cualquier cosa."],
+    ["¿Puedo ver una demostración antes de decidir?", "Sí. Pídela en el formulario y una persona del equipo te la muestra. También puedes crear una cuenta de prueba y explorar por tu cuenta."],
   ];
   return (<div className="land">
-    <header><b>🏛️ Crea tu Oficina IA</b><span className="row"><Link href="/login">Entrar</Link><a className="btn" href="#acceso">Acceso anticipado</a></span></header>
+    <header><b>🏛️ Crea tu Oficina IA</b><span className="row"><Link href="/planes">Planes</Link><Link href="/ayuda/tutoriales">Ayuda</Link><Link href="/login">Entrar</Link><CtaLink className="btn" href="/demo" cta="header-demo">Pedir demostración</CtaLink></span></header>
     <section style={{ paddingBottom: 20 }}><h1>Crea tu propia agencia de inteligencia artificial, aunque nunca hayas programado</h1>
       <p className="sub">Elige qué servicios ofrecer, arma tu equipo digital y prepara soluciones para tus futuros clientes. Nosotros ponemos la tecnología.</p>
-      <p className="row"><a className="btn big" href="#acceso" data-testid="cta-early">Quiero acceso anticipado</a><a className="btn ghost big" href="#como">Ver cómo funciona</a></p>
+      <p className="row"><CtaLink className="btn big" href="/demo" cta="hero-demo" testId="cta-demo">Pedir una demostración</CtaLink><CtaLink className="btn ghost big" href="/registro" cta="hero-registro" testId="cta-registro">Crear cuenta de prueba</CtaLink><a className="btn ghost big" href="#como">Ver cómo funciona</a></p>
       <p className="muted">Sin tarjeta · Sin cobros · Sin promesas de ganancias</p></section>
 
     <section id="como" style={{ paddingTop: 10 }}><h2>Así de fácil</h2><div className="cols">
@@ -40,7 +42,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       <div className="card"><h3>✅ Ya funciona</h3><ul><li>Crear tu negocio paso a paso</li><li>Elegir y enseñar a tus empleados</li><li>Una oficina por cada cliente</li><li>Preparar propuestas</li><li>Pedir permiso antes de cambios importantes</li></ul></div>
       <div className="card"><h3>🔧 Estamos terminando</h3><ul><li>Conectar WhatsApp, Instagram, Shopify y otras aplicaciones</li><li>Que los empleados trabajen con inteligencia artificial real en tu instalación</li><li>Cobros y planes (todavía no se cobra nada)</li></ul></div></div></section>
 
-    <section><LeadForm utm={utm} /></section>
+    <section><h2>¿Prefieres que te avisemos?</h2><p className="muted">Si todavía no quieres una demostración, deja tu correo y te avisamos cuando abramos más lugares. ¿Quieres hablar con alguien? <Link href="/demo">Pide una demostración</Link>.</p><LeadForm /></section>
     <section><h2>Preguntas frecuentes</h2>{faq.map(([q, a]) => <details key={q}><summary>{q}</summary><p className="muted">{a}</p></details>)}</section>
-    <footer><Link href="/privacidad">Política de privacidad</Link> · Crea tu Oficina IA. Los resultados dependen de cada persona; no se garantizan ganancias.</footer></div>);
+    <footer><Link href="/planes">Planes</Link> · <Link href="/ayuda/tutoriales">Ayuda</Link> · <Link href="/privacidad">Política de privacidad</Link> · Crea tu Oficina IA. Los resultados dependen de cada persona; no se garantizan ganancias.</footer></div>);
 }

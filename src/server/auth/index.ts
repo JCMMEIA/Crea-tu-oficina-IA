@@ -50,6 +50,7 @@ async function createUser(t: Db, v: { email: string; name: string; password: str
 const agencySignupSchema = z.object({
   email: signupSchema.shape.email, name: signupSchema.shape.name, password: signupSchema.shape.password,
   agencyName: z.string().trim().min(1).max(120), specialty: z.string().trim().max(200).default(""),
+  source: z.string().trim().max(100).default(""), planInterest: z.string().trim().max(30).default(""),
 });
 /** Registro principal del producto: crea la AGENCIA y a su propietario. */
 export async function signupAgency(db: Db, input: unknown): Promise<{ userId: string; agencyId: string }> {
@@ -57,7 +58,7 @@ export async function signupAgency(db: Db, input: unknown): Promise<{ userId: st
   const agencyId = newId();
   const userId = await db.tx(async (t) => {
     const uid = await createUser(t, v);
-    await t.query("INSERT INTO agencies(id,name,specialty) VALUES($1,$2,$3)", [agencyId, v.agencyName, v.specialty]);
+    await t.query("INSERT INTO agencies(id,name,specialty,signup_source,plan_interest) VALUES($1,$2,$3,$4,$5)", [agencyId, v.agencyName, v.specialty, v.source || "directo", v.planInterest]);
     await t.query("INSERT INTO agency_members(agency_id,user_id,role) VALUES($1,$2,'agency_owner')", [agencyId, uid]);
     return uid;
   });

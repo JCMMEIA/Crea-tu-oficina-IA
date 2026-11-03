@@ -20,6 +20,7 @@ export default async function AgencyLayout({ children }: { children: React.React
         <MenuButton />
         <small>Mi negocio</small>
         <Link href="/agencia">🏠 Mi oficina</Link>
+        <Link href="/agencia/activacion">🚀 Activa tu agencia</Link>
         <Link href="/agencia/clientes">👥 Mis clientes</Link>
         <Link href="/agencia/contratar">➕ Agregar empleado</Link>
         <Link href="/agencia/skills">🎓 Lo que saben mis empleados</Link>
@@ -32,6 +33,7 @@ export default async function AgencyLayout({ children }: { children: React.React
         <small>Cuidar el negocio</small>
         <Link href="/agencia/soporte">✋ Por aprobar{pending ? ` (${pending})` : ""}</Link>
         <Link href="/agencia/identidad">🎨 Mi marca</Link>
+        <Link href="/agencia/plan">💳 Mi plan</Link>
         <Link href="/ayuda">❓ Ayuda</Link>
         <ThemeToggle />
         <form action={logoutAction}><button className="ghost" style={{ margin: "0 10px" }}>Salir ({roleLabel(agency.agencyRole)})</button></form>

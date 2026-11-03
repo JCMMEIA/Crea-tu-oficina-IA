@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/server/db";
 import { actAs, audit, login, signupAgency } from "@/server/auth";
+import { prepareDemo } from "@/server/commercial/activation";
+import { startCheckout } from "@/server/commercial/billing";
+import { createSupportRequest } from "@/server/commercial/support";
+import { currentActor } from "@/lib/session";
 import { COMPANY_COOKIE, requireAgency, setSessionCookie } from "@/lib/session";
 import { addClientUser, applyIndustryTemplate, createClient, createProposal, createService, saveAgencySkill, getAgencySkill, setClientLimits, setProposalStatus, updateBrand, updateService } from "@/server/agency";
 import { deployServiceToClient } from "@/server/agency/deploy";
@@ -33,7 +37,7 @@ async function attempt<T>(path: string, fn: () => Promise<T>): Promise<T> {
 export async function agencySignupAction(f: FormData) {
   const db = await getDb();
   try {
-    await signupAgency(db, { email: s(f, "email"), name: s(f, "name"), password: s(f, "password"), agencyName: s(f, "agencyName"), specialty: s(f, "specialty") });
+    await signupAgency(db, { email: s(f, "email"), name: s(f, "name"), password: s(f, "password"), agencyName: s(f, "agencyName"), specialty: s(f, "specialty"), source: s(f, "source"), planInterest: s(f, "plan") });
     await setSessionCookie(await login(db, s(f, "email"), s(f, "password")));
   } catch (e: any) { if (e?.digest) throw e; return redirect("/registro?error=" + encodeURIComponent(e?.name === "ZodError" ? "Revisa los datos (contraseña de al menos 10 caracteres)." : e.message)); }
   redirect("/empezar");
@@ -161,4 +165,24 @@ export async function teachAgencyAction(f: FormData) {
     await saveAgencySkill(db, agency, k, buildTaughtSkill(cur, { quiere: s(f, "quiere"), como: s(f, "como"), sabe: s(f, "sabe"), nunca: s(f, "nunca"), resultado: s(f, "resultado") }), "Lo que le enseñé");
     return "Guardado. Los clientes nuevos tendrán a este empleado ya enseñado; los actuales no cambian.";
   });
+}
+
+export async function requestPlanAction(f: FormData) {
+  const { db, agency } = await requireAgency();
+  try {
+    const r = await startCheckout(db, agency, s(f, "plan"));
+    if (r.mode === "pago") return redirect(r.url);
+  } catch (e: any) { if (e?.digest) throw e; return redirect("/agencia/plan?error=" + encodeURIComponent(e.message)); }
+  redirect("/agencia/plan?ok=" + encodeURIComponent("Listo, recibimos tu solicitud. No se cobró nada."));
+}
+export async function supportAction(f: FormData) {
+  const { db, actor, agency } = await currentActor();
+  try { await createSupportRequest(db, { email: s(f, "email"), subject: s(f, "subject"), body: s(f, "body") }, { agencyId: agency?.agencyId ?? null, userId: agency?.userId ?? actor?.userId ?? null }, s(f, "website")); }
+  catch (e: any) { return redirect("/ayuda/tutoriales?error=" + encodeURIComponent(e?.name === "ZodError" ? "Revisa tu correo, el asunto y el mensaje." : e.message) + "#soporte"); }
+  redirect("/ayuda/tutoriales?ok=" + encodeURIComponent("Recibimos tu mensaje. Una persona te responderá por correo.") + "#soporte");
+}
+export async function prepareDemoAction(f: FormData) {
+  const { db, agency } = await requireAgency();
+  try { const r = await prepareDemo(db, agency, f.getAll("servicio").map(String)); revalidatePath("/", "layout"); return redirect("/agencia/activacion?ok=" + encodeURIComponent(`Demostración lista: ${r.services} servicio(s) y ${r.hired} empleado(s) nuevos en tu oficina de práctica.`) + "#demo"); }
+  catch (e: any) { if (e?.digest) throw e; return redirect("/agencia/activacion?error=" + encodeURIComponent(e.message) + "#demo"); }
 }

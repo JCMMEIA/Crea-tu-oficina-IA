@@ -43,3 +43,13 @@ export async function requireUser() {
   if (!user) redirect("/login");
   return { db, user, agency: await agencyActorFromToken(db, token) };
 }
+
+/** Panel de operador: exige sesión y que el correo esté en PLATFORM_ADMIN_EMAILS. Cualquier otro caso → 404 lógico (redirige al inicio). */
+export async function requireOperator() {
+  const db = await getDb();
+  const token = (await cookies()).get(COOKIE)?.value;
+  const user = await sessionUser(db, token);
+  const { isPlatformAdmin } = await import("@/server/commercial/admin");
+  if (!user || !isPlatformAdmin(user.email)) redirect(user ? "/" : "/login");
+  return { db, op: { userId: user.userId, email: user.email } };
+}

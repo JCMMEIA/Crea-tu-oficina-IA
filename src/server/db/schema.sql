@@ -195,3 +195,42 @@ CREATE TABLE IF NOT EXISTS restock_drafts (
   items jsonb NOT NULL, total_units int NOT NULL, total_cost numeric NOT NULL DEFAULT 0,
   status text NOT NULL DEFAULT 'borrador' CHECK (status IN ('borrador','aprobado_sin_enviar','rechazado')),
   created_at timestamptz NOT NULL DEFAULT now(), decided_at timestamptz);
+
+-- === Sistema comercial: embudo, seguimiento, licencias, soporte, medición ===
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'acceso';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'nuevo';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS company text NOT NULL DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS phone text NOT NULL DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS interests jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS preferred_time text NOT NULL DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'directo';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS landing text NOT NULL DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS demo_requested_at timestamptz;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS next_followup_at timestamptz;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_note text NOT NULL DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+CREATE INDEX IF NOT EXISTS leads_status_idx ON leads(status, created_at);
+CREATE TABLE IF NOT EXISTS lead_notes (
+  id text PRIMARY KEY, lead_id text NOT NULL REFERENCES leads(id) ON DELETE CASCADE, body text NOT NULL,
+  author_user_id text, created_at timestamptz NOT NULL DEFAULT now());
+-- Medición propia (sin cookies ni IP): solo nombre de evento, ruta, fuente y propiedades acotadas.
+CREATE TABLE IF NOT EXISTS events (
+  id bigserial PRIMARY KEY, name text NOT NULL, path text NOT NULL DEFAULT '', source text NOT NULL DEFAULT 'directo',
+  props jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS events_name_idx ON events(name, created_at);
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS signup_source text NOT NULL DEFAULT 'directo';
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS plan_interest text NOT NULL DEFAULT '';
+-- Licencias: el plan efectivo vive en agencies.plan; esta tabla es el historial (quién, cuándo, de dónde vino).
+CREATE TABLE IF NOT EXISTS licenses (
+  id text PRIMARY KEY, agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE, plan text NOT NULL,
+  status text NOT NULL CHECK (status IN ('activa','cancelada','vencida')),
+  origin text NOT NULL CHECK (origin IN ('manual','pasarela')), starts_at timestamptz NOT NULL DEFAULT now(), ends_at timestamptz,
+  note text NOT NULL DEFAULT '', created_by text, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS licenses_agency_idx ON licenses(agency_id, created_at);
+CREATE TABLE IF NOT EXISTS plan_requests (
+  id text PRIMARY KEY, agency_id text NOT NULL REFERENCES agencies(id) ON DELETE CASCADE, user_id text, plan text NOT NULL,
+  status text NOT NULL DEFAULT 'solicitada' CHECK (status IN ('solicitada','atendida','descartada')),
+  note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS support_requests (
+  id text PRIMARY KEY, agency_id text, user_id text, email text NOT NULL, subject text NOT NULL, body text NOT NULL,
+  status text NOT NULL DEFAULT 'abierta' CHECK (status IN ('abierta','resuelta')), created_at timestamptz NOT NULL DEFAULT now());
