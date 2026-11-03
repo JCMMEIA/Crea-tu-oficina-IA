@@ -29,6 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/aprobaciones">✋ Por aprobar{pending ? ` (${pending})` : ""}</Link>
         <Link href="/actividad">📋 Historial de trabajo</Link>
         <Link href="/automatizaciones">🔁 Tareas automáticas</Link>
+        <Link href="/inventario">📦 Inventario</Link>
         <small>Preparar</small>
         <Link href="/conexiones">🔌 Conecta tus aplicaciones</Link>
         <Link href="/conocimiento">📚 Lo que debe saber mi negocio</Link>

@@ -13,6 +13,8 @@ import { disconnect, startConnection, testConnection } from "@/server/connectors
 import { addDoc, deleteDoc } from "@/server/knowledge";
 import { createAutomation, setAutomationEnabled } from "@/server/automations";
 import { getProvider } from "@/server/models";
+import { importInventory } from "@/server/inventory";
+import { AUTOMATION_INSTRUCTION, VERDE_VIVO_CSV } from "@/server/pilot";
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "");
 const back = (path: string, msg?: string, kind: "ok" | "bad" = "bad") => redirect(msg ? `${path}${path.includes("?") ? "&" : "?"}${kind === "ok" ? "ok" : "error"}=${encodeURIComponent(msg)}` : path);
@@ -172,4 +174,30 @@ export async function teachEmployeeAction(f: FormData) {
     await saveSkillVersion(db, actor, id, spec, "Lo que le enseñé");
     return "Listo: tu empleado aprendió lo nuevo. Puedes volver a una versión anterior cuando quieras.";
   });
+}
+
+/** Carga el inventario desde un archivo CSV o texto pegado (reemplaza el anterior; todo o nada). */
+export async function importInventoryAction(f: FormData) {
+  const { db, actor } = await requireActor();
+  await safe("/inventario", async () => {
+    let csv = s(f, "csv"); const file = f.get("archivo");
+    if (file instanceof File && file.size > 0) { if (file.size > 200_000) throw new Error("El archivo pesa demasiado (máximo 200 KB)."); csv = await file.text(); }
+    if (s(f, "ejemplo") === "1") csv = VERDE_VIVO_CSV;
+    const r = await importInventory(db, actor, csv);
+    return `Listo: cargamos ${r.loaded} productos.`;
+  });
+}
+/** «Revisar inventario ahora»: pide la tarea al Controlador de inventario por el motor normal (con IA real si está activada). */
+export async function reviewInventoryAction(f: FormData) {
+  const { db, actor } = await requireActor(); let target = "/inventario";
+  try {
+    const e = (await db.query("SELECT id FROM employees WHERE company_id=$1 AND template_key='controlador-inventario' AND status='active' LIMIT 1", [actor.companyId]))[0];
+    if (!e) return redirect("/inventario?error=" + encodeURIComponent("Primero agrega a tu Controlador de inventario."));
+    const id = await createTask(db, actor, { employeeId: e.id, title: "Revisar el inventario", instruction: AUTOMATION_INSTRUCTION });
+    target = `/actividad/${id}`; await runWorkflow(db, actor, id, { provider: getProvider() });
+  } catch (e: any) {
+    if (e instanceof DuplicateTaskError) return redirect(`/actividad/${e.existingId}?error=${encodeURIComponent(e.message)}`);
+    if (e?.digest) throw e; return redirect("/inventario?error=" + encodeURIComponent(e.message));
+  }
+  revalidatePath("/", "layout"); redirect(target);
 }

@@ -183,3 +183,15 @@ CREATE TABLE IF NOT EXISTS agency_channel_credentials (
 -- === Rediseño de experiencia ===
 ALTER TABLE agencies ADD COLUMN IF NOT EXISTS onboarding jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS is_demo boolean NOT NULL DEFAULT false;
+
+-- === Piloto: inventario y borradores de resurtido ===
+CREATE TABLE IF NOT EXISTS inventory_items (
+  company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE, sku text NOT NULL, name text NOT NULL,
+  stock int NOT NULL CHECK (stock >= 0), min_stock int NOT NULL CHECK (min_stock >= 0), max_stock int NOT NULL CHECK (max_stock >= 0),
+  unit_cost numeric NOT NULL DEFAULT 0, supplier text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (company_id, sku), CHECK (min_stock <= max_stock));
+CREATE TABLE IF NOT EXISTS restock_drafts (
+  id text PRIMARY KEY, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE, task_id text,
+  items jsonb NOT NULL, total_units int NOT NULL, total_cost numeric NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'borrador' CHECK (status IN ('borrador','aprobado_sin_enviar','rechazado')),
+  created_at timestamptz NOT NULL DEFAULT now(), decided_at timestamptz);

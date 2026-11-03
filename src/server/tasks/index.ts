@@ -8,6 +8,7 @@ import { ConnectorAdapter, getActiveConnection, getAdapter } from "../connectors
 import { getToolkit } from "../connectors/catalog";
 import { assertWithinLimits, costUsd, LimitError, recordUsage } from "../usage";
 import { searchForEmployee, wrapUntrusted } from "../knowledge";
+import { INTERNAL_TOOLKITS, describeApproval, executeInternal, markDraftRejected } from "../inventory";
 
 export const MAX_DEPTH = 3;
 export const MAX_TASKS_PER_CHAIN = 10;
@@ -57,8 +58,8 @@ export async function createTask(db: Db, actor: Actor, input: unknown, opts: { c
 
 interface RunDeps { provider: ModelProvider | null; adapter?: ConnectorAdapter; retryDelayMs?: number }
 
-function buildTools(spec: Awaited<ReturnType<typeof getSkillForRun>>, connected: Set<string>): { defs: ToolDef[]; map: Map<string, { toolkit: string; action: string; kind: "read" | "write" }> } {
-  const defs: ToolDef[] = [], map = new Map<string, { toolkit: string; action: string; kind: "read" | "write" }>();
+function buildTools(spec: Awaited<ReturnType<typeof getSkillForRun>>, connected: Set<string>): { defs: ToolDef[]; map: Map<string, { toolkit: string; action: string; kind: "read" | "write" | "draft" }> } {
+  const defs: ToolDef[] = [], map = new Map<string, { toolkit: string; action: string; kind: "read" | "write" | "draft" }>();
   for (const tk of spec.skill.authorizedTools) {
     const perm = spec.permissions[tk] ?? "none";
     if (perm === "none" || !connected.has(tk)) continue;
@@ -100,12 +101,14 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
   const run = await getSkillForRun(db, actor.companyId, task.employee_id);
   const adapter = deps.adapter ?? getAdapter();
   const connected = new Set<string>();
-  for (const tk of Object.keys(run.permissions)) if (await getActiveConnection(db, actor.companyId, tk)) connected.add(tk);
+  for (const tk of Object.keys(run.permissions)) if (INTERNAL_TOOLKITS.has(tk) || await getActiveConnection(db, actor.companyId, tk)) connected.add(tk); // las herramientas internas no necesitan conexión externa
   const { defs, map } = buildTools(run, connected);
 
   const knowledge = await searchForEmployee(db, actor.companyId, task.employee_id, `${task.instruction} ${task.context}`);
+  const mates = await db.query("SELECT id,name,role_title FROM employees WHERE company_id=$1 AND status='active' AND id<>$2 ORDER BY created_at LIMIT 30", [actor.companyId, task.employee_id]);
   const system = [
     run.skill.systemPrompt,
+    mates.length ? `\n## Tus compañeros\nPuedes pedirles trabajo con delegate_task (usa su id exacto):\n${mates.map((m) => `- ${m.name} — ${m.role_title} (id: ${m.id})`).join("\n")}` : "",
     run.skill.procedures.length ? `\n## Procedimientos\n${run.skill.procedures.map((p) => `- ${p}`).join("\n")}` : "",
     run.skill.outputFormat ? `\n## Formato de respuesta\n${run.skill.outputFormat}` : "",
     run.skill.actionConditions.length ? `\n## Condiciones para actuar\n${run.skill.actionConditions.map((p) => `- ${p}`).join("\n")}` : "",
@@ -154,15 +157,16 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
           if (needs) {
             const approvalId = newId();
             await db.query("INSERT INTO approvals(id,company_id,task_id,employee_id,toolkit,action,args,summary) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
-              [approvalId, actor.companyId, taskId, task.employee_id, t.toolkit, t.action, JSON.stringify(call.input), `${run.employeeName} solicita: ${t.toolkit}.${t.action}`]);
+              [approvalId, actor.companyId, taskId, task.employee_id, t.toolkit, t.action, JSON.stringify(call.input), `${run.employeeName} solicita: ${(await describeApproval(db, actor.companyId, t.toolkit, t.action, call.input)) ?? `${t.toolkit}.${t.action}`}`]);
             await event(db, actor.companyId, taskId, "approval_requested", { approvalId, tool: call.name });
             paused = true; evidence.push(`Solicitud de aprobación ${approvalId} para ${call.name} (NO ejecutada).`);
             results.push({ id: call.id, content: "Acción enviada al propietario para aprobación. No está ejecutada." });
             continue;
           }
         }
-        const conn = await getActiveConnection(db, actor.companyId, t.toolkit);
-        const r = await adapter.execute(actor.companyId, conn!.external_id, t.toolkit, t.action, call.input);
+        const r = INTERNAL_TOOLKITS.has(t.toolkit)
+          ? await executeInternal(db, { companyId: actor.companyId, taskId }, t.action, call.input)
+          : await adapter.execute(actor.companyId, (await getActiveConnection(db, actor.companyId, t.toolkit))!.external_id, t.toolkit, t.action, call.input);
         await event(db, actor.companyId, taskId, r.ok ? "tool_executed" : "tool_failed", { tool: call.name, args: call.input, response: r.ok ? r.data : r.error });
         evidence.push(`${call.name}: ${r.ok ? "ok" : "falló"}`);
         results.push({ id: call.id, content: r.ok ? JSON.stringify(r.data ?? {}).slice(0, 8000) : `Error: ${r.error}`, isError: !r.ok });
@@ -220,9 +224,11 @@ export async function decideApproval(db: Db, actor: Actor, approvalId: string, a
   if (!approve) {
     await db.query("UPDATE tasks SET status='rejected', finished_at=now() WHERE id=$1", [a.task_id]);
     await event(db, actor.companyId, a.task_id, "approval_rejected", { approvalId });
+    if (INTERNAL_TOOLKITS.has(a.toolkit)) await markDraftRejected(db, actor.companyId, a.args);
     return { executed: false };
   }
-  const conn = await getActiveConnection(db, actor.companyId, a.toolkit);
+  const internal = INTERNAL_TOOLKITS.has(a.toolkit);
+  const conn = internal ? { external_id: "interno" } : await getActiveConnection(db, actor.companyId, a.toolkit);
   if (!conn) {
     const evidence = { ok: false, error: "La integración ya no está conectada." };
     await db.query("UPDATE approvals SET evidence=$2 WHERE id=$1", [approvalId, JSON.stringify(evidence)]);
@@ -230,7 +236,7 @@ export async function decideApproval(db: Db, actor: Actor, approvalId: string, a
     await event(db, actor.companyId, a.task_id, "tool_failed", evidence);
     return { executed: false, error: evidence.error };
   }
-  const r = await adapter.execute(actor.companyId, conn.external_id, a.toolkit, a.action, a.args);
+  const r = internal ? await executeInternal(db, { companyId: actor.companyId, taskId: a.task_id }, a.action, a.args) : await adapter.execute(actor.companyId, conn.external_id, a.toolkit, a.action, a.args);
   await db.query("UPDATE approvals SET evidence=$2 WHERE id=$1", [approvalId, JSON.stringify(r)]);
   await event(db, actor.companyId, a.task_id, r.ok ? "tool_executed" : "tool_failed", { approvalId, tool: `${a.toolkit}__${a.action}`, response: r.ok ? r.data : r.error });
   const left = await db.query("SELECT 1 FROM approvals WHERE task_id=$1 AND status='pending'", [a.task_id]);

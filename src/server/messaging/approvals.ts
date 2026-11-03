@@ -7,7 +7,7 @@ import { actorFor } from "./access";
 import { Identity } from "./link";
 
 /** Acciones que afectan a clientes, dinero o publicación: exigen DOS pasos (APROBAR y luego CONFIRMAR). */
-export const HIGH_RISK = new Set(["publish_ad", "update_budget", "send_message", "update_price", "create_discount", "delete"]);
+export const HIGH_RISK = new Set(["publish_ad", "update_budget", "send_message", "update_price", "create_discount", "delete", "solicitar_resurtido"]);
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const TOKEN_TTL_MIN = 30, CONFIRM_TTL_MIN = 5, MAX_FAILS = 5;
 const pepper = () => process.env.APP_SECRET ?? "solo-desarrollo";

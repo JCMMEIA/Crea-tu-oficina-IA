@@ -12,7 +12,9 @@
     "secrets:check": "node scripts/check_secrets.mjs",
     "check": "npm run typecheck && npm run test && npm run secrets:check",
     "automations:tick": "tsx scripts/automations_tick.ts",
-    "jobs:tick": "tsx scripts/jobs_tick.ts"
+    "jobs:tick": "tsx scripts/jobs_tick.ts",
+    "pilot:claude": "tsx scripts/pilot/claude_check.ts",
+    "pilot:telegram": "tsx scripts/pilot/telegram_check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

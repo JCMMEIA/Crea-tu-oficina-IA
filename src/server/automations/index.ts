@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Db, newId } from "../db";
 import { Actor, assertCan, audit } from "../auth";
-import { createTask, DuplicateTaskError, retryTask, runTask } from "../tasks";
+import { createTask, DuplicateTaskError, retryTask, runWorkflow } from "../tasks";
 import { ConnectorAdapter } from "../connectors";
 import { ModelProvider } from "../models";
 
@@ -44,9 +44,13 @@ const check = (c: z.infer<typeof condSchema>, p: Record<string, unknown>) => {
   return c.op === "eq" ? x === c.value : c.op === "lt" ? Number(x) < Number(c.value) : Number(x) > Number(c.value);
 };
 
+/** Actor con el que corre una automatización: el propietario de la empresa o, si la opera una agencia, el dueño de la agencia. */
 async function ownerActor(db: Db, companyId: string): Promise<Actor> {
-  const r = (await db.query("SELECT m.user_id, u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.company_id=$1 AND m.role='owner' LIMIT 1", [companyId]))[0];
-  return { userId: r.user_id, email: `automatización (${r.email})`, companyId, role: "owner" };
+  const r = (await db.query("SELECT m.user_id, u.email, c.agency_id FROM memberships m JOIN users u ON u.id=m.user_id JOIN companies c ON c.id=m.company_id WHERE m.company_id=$1 AND m.role='owner' LIMIT 1", [companyId]))[0];
+  if (r) return { userId: r.user_id, email: `automatización (${r.email})`, companyId, role: "owner", agencyId: r.agency_id };
+  const g = (await db.query("SELECT m.user_id, u.email, c.agency_id FROM agency_members m JOIN companies c ON c.agency_id=m.agency_id JOIN users u ON u.id=m.user_id WHERE c.id=$1 AND m.role='agency_owner' LIMIT 1", [companyId]))[0];
+  if (!g) throw new Error("La empresa no tiene un propietario que autorice esta automatización.");
+  return { userId: g.user_id, email: `automatización (${g.email})`, companyId, role: "owner", agencyId: g.agency_id };
 }
 
 interface Deps { provider: ModelProvider | null; adapter?: ConnectorAdapter; retryDelayMs?: number }
@@ -62,9 +66,10 @@ async function execute(db: Db, a: any, payload: Record<string, unknown>, deps: D
     taskId = await createTask(db, actor, { employeeId: a.employee_id, title: `[Auto] ${a.name}`, instruction: a.instruction, context: Object.keys(payload).length ? `Datos del evento: ${JSON.stringify(payload)}` : "" }, { createdBy: `automatización:${a.name}` });
   } catch (e: any) { await log(e instanceof DuplicateTaskError ? "skipped_duplicate" : "failed", null, 1, e.message); return; }
   for (let attempt = 1; attempt <= a.max_retries + 1; attempt++) {
-    const r = await runTask(db, actor, taskId, deps);
-    if (r.status !== "failed") { await log(r.status, taskId, attempt); return; }
-    const err = (await db.query("SELECT error FROM tasks WHERE id=$1", [taskId]))[0].error;
+    await runWorkflow(db, actor, taskId, deps); // la tarea Y las que se deleguen (cadena completa)
+    const root = (await db.query("SELECT status,error FROM tasks WHERE id=$1", [taskId]))[0];
+    if (root.status !== "failed") { await log(root.status, taskId, attempt); return; }
+    const err = root.error;
     await log("failed", taskId, attempt, err);
     if (attempt <= a.max_retries) await retryTask(db, actor, taskId);
   }

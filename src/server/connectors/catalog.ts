@@ -1,5 +1,5 @@
-export type Availability = "composio" | "oficial-directa" | "no-disponible";
-export interface ToolSpec { action: string; description: string; kind: "read" | "write"; schema: Record<string, unknown>; composioSlug?: string }
+export type Availability = "composio" | "oficial-directa" | "no-disponible" | "interna";
+export interface ToolSpec { action: string; description: string; kind: "read" | "write" | "draft"; schema: Record<string, unknown>; composioSlug?: string }
 export interface ToolkitSpec {
   key: string; label: string; category: string; availability: Availability; note: string; tools: ToolSpec[];
 }
@@ -8,6 +8,11 @@ const str = (d: string) => ({ type: "string", description: d });
 
 /** Catálogo honesto: "disponible" significa que existe vía y adaptador, NO que esté probado con una cuenta real. */
 export const TOOLKITS: ToolkitSpec[] = [
+  { key: "inventario", label: "Inventario de la empresa", category: "Operaciones", availability: "interna", note: "Función propia de la plataforma: usa el inventario que la empresa carga por archivo. No necesita conexión externa.", tools: [
+    { action: "leer_inventario", description: "Leer el inventario actual (productos, existencias, mínimos y máximos)", kind: "read", schema: obj() },
+    { action: "calcular_resurtido", description: "Calcular qué productos están bajo el mínimo y cuántas unidades faltan para llegar al máximo (cálculo exacto del sistema)", kind: "read", schema: obj() },
+    { action: "guardar_borrador_resurtido", description: "Guardar un BORRADOR de resurtido con los productos bajo el mínimo (el sistema calcula las cantidades; no se envía nada)", kind: "draft", schema: obj({ nota: str("Nota opcional") }) },
+    { action: "solicitar_resurtido", description: "Pedir al propietario que apruebe el borrador de resurtido", kind: "write", schema: obj({ draft_id: str("ID del borrador") }, ["draft_id"]) }] },
   { key: "meta_ads", label: "Meta Ads", category: "Publicidad y marketing", availability: "composio", note: "Vía Composio. Requiere cuenta publicitaria autorizada por la empresa.", tools: [
     { action: "get_campaign_insights", description: "Métricas de campañas (CPM, CTR, CPC, CPA, ROAS)", kind: "read", schema: obj({ date_range: str("Rango, p. ej. last_7d") }) },
     { action: "pause_ad", description: "Pausar un anuncio", kind: "write", schema: obj({ ad_id: str("ID del anuncio") }, ["ad_id"]) },

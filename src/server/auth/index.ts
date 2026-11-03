@@ -32,7 +32,14 @@ const signupSchema = z.object({
   companyName: z.string().trim().min(1).max(160),
 });
 
+/** Piloto privado: si SIGNUP_ALLOWED_EMAILS está definida (correos separados por coma), solo esos correos pueden crear cuenta. */
+export function assertSignupAllowed(email: string) {
+  const list = (process.env.SIGNUP_ALLOWED_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (list.length && !list.includes(email.toLowerCase())) throw new Error("El registro está cerrado por ahora. Pide tu acceso anticipado.");
+}
+
 async function createUser(t: Db, v: { email: string; name: string; password: string }) {
+  assertSignupAllowed(v.email);
   const exists = await t.query("SELECT 1 FROM users WHERE email=$1", [v.email]);
   if (exists.length) throw new Error("Ya existe una cuenta con ese correo.");
   const userId = newId();
