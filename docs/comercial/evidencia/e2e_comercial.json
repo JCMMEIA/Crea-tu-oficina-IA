@@ -1,0 +1,149 @@
+{
+ "fecha": "2026-11-03T19:50:12.595Z",
+ "resultados": [
+  {
+   "m": "landing carga con su título",
+   "ok": true
+  },
+  {
+   "m": "landing: CTAs «Pedir demostración» y «Crear cuenta de prueba»",
+   "ok": true
+  },
+  {
+   "m": "landing no muestra precios inventados",
+   "ok": true
+  },
+  {
+   "m": "demo: sin consentimiento NO se envía",
+   "ok": true
+  },
+  {
+   "m": "gracias de demostración (dice que la respuesta es manual)",
+   "ok": true
+  },
+  {
+   "m": "planes: precios «por confirmar», sin cifras inventadas",
+   "ok": true
+  },
+  {
+   "m": "planes: avisa que no hay cobro",
+   "ok": true
+  },
+  {
+   "m": "registro con plan de interés → asistente",
+   "ok": true
+  },
+  {
+   "m": "activación: progreso inicial bajo (0 de 7 listos (0 %))",
+   "ok": true
+  },
+  {
+   "m": "activación: demo y empleados se marcan solos",
+   "ok": true
+  },
+  {
+   "m": "mi plan: dice «Cobros desactivados»",
+   "ok": true
+  },
+  {
+   "m": "solicitud de plan registrada",
+   "ok": true
+  },
+  {
+   "m": "el plan sigue en «Prueba» (no se activó nada sin pago/autorización)",
+   "ok": true
+  },
+  {
+   "m": "ayuda: ≥6 tutoriales",
+   "ok": true
+  },
+  {
+   "m": "soporte: mensaje enviado",
+   "ok": true
+  },
+  {
+   "m": "/admin sin sesión → redirige (http://localhost:3112/login)",
+   "ok": true
+  },
+  {
+   "m": "/admin con sesión de agencia que NO es operadora → redirige",
+   "ok": true
+  },
+  {
+   "m": "panel: visitas > 0 (reales, medidas por el sitio)",
+   "ok": true
+  },
+  {
+   "m": "panel: 1 prospecto y 1 demo",
+   "ok": true
+  },
+  {
+   "m": "panel: registros ≥ 2",
+   "ok": true
+  },
+  {
+   "m": "panel: Compras = «No activo»",
+   "ok": true
+  },
+  {
+   "m": "prospecto aparece en el panel",
+   "ok": true
+  },
+  {
+   "m": "fuente «meta» conservada desde el anuncio hasta el prospecto",
+   "ok": true
+  },
+  {
+   "m": "detalle: muestra intereses",
+   "ok": true
+  },
+  {
+   "m": "estado de venta guardado",
+   "ok": true
+  },
+  {
+   "m": "nota guardada",
+   "ok": true
+  },
+  {
+   "m": "recordatorio programado",
+   "ok": true
+  },
+  {
+   "m": "agencias: aparece la solicitud de plan",
+   "ok": true
+  },
+  {
+   "m": "soporte: el mensaje llega al panel",
+   "ok": true
+  },
+  {
+   "m": "tras concesión MANUAL el plan de la agencia cambia a «Agencia»",
+   "ok": true
+  },
+  {
+   "m": "una licencia manual NO cuenta como compra",
+   "ok": true
+  },
+  {
+   "m": "móvil /: sin scroll horizontal (390px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /demo: sin scroll horizontal (390px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /planes: sin scroll horizontal (390px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /ayuda/tutoriales: sin scroll horizontal (390px)",
+   "ok": true
+  },
+  {
+   "m": "0 errores de JavaScript en el recorrido",
+   "ok": true
+  }
+ ]
+}
