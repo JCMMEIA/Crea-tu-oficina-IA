@@ -1,6 +1,6 @@
 # Reporte de pruebas (2026-11-03)
 
-`npm run check` (actualizado con el modelo de agencias): tipos OK · **60/60 pruebas** (25 del MVP en `tests/core.test.ts` + 18 de agencias en `tests/agency.test.ts` + 3 de leads en `tests/leads.test.ts`, PGlite = Postgres real embebido) · escaneo de secretos limpio · `npm audit --omit=dev`: 0 vulnerabilidades · `next build` OK.
+`npm run check` (actualizado con el modelo de agencias): tipos OK · **128/128 pruebas** (25 del MVP en `tests/core.test.ts` + 18 de agencias en `tests/agency.test.ts` + 3 de leads en `tests/leads.test.ts`, PGlite = Postgres real embebido) · escaneo de secretos limpio · `npm audit --omit=dev`: 0 vulnerabilidades · `next build` OK.
 Además, una prueba de humo en navegador (Playwright, servidor de producción): registro → perfil → contratar → ficha → tarea → skill v2 → conexiones → vista móvil sin scroll horizontal.
 
 **Importante:** las pruebas usan un proveedor de IA y un adaptador Composio **simulados** (`tests/helpers.ts`, no existen en la app). Prueban la lógica del producto, **no** que Claude ni Composio respondan.
@@ -52,3 +52,30 @@ Llamada real a Claude · HTTP real a Composio · cualquier integración con cuen
 | Vista 3D, fallback 2D, tres ubicaciones, datos reales, aislamiento, móvil emulado | ✅ verificado |
 | GPU real, Safari/Firefox, móviles físicos, dispositivos de gama baja | ⏳ no probado |
 | Animaciones, salas extra, estilos premium, recorridos guiados | ⏳ solo la base extensible (fase 2) |
+
+
+## Mensajería: WhatsApp y Telegram (2026-11-03)
+
+`npm run check`: **128/128 pruebas** (60 previas + 54 en `tests/messaging.test.ts` + 14 en `tests/channels.test.ts`), tipos limpios, sin secretos, 0 vulnerabilidades. Regresión: `agency_flow` y `office3d` (E2E) siguen pasando.
+
+### Qué es REAL, qué es SIMULADO
+| Elemento | Real | Simulado |
+|---|---|---|
+| Lógica de vinculación, coordinador, aprobaciones, cola, bandeja, límites, aislamiento, revocación, base de datos (PGlite) | ✅ ejecutada de verdad | — |
+| Webhooks HTTP (rutas Next en servidor de producción), autenticación por secreto/HMAC, `after()` + cola | ✅ E2E por HTTP real (`scripts/e2e/messaging.cjs`) | — |
+| **Telegram / WhatsApp / Meta (el servicio externo)** | ❌ **nunca se contactó** | Canales falsos en pruebas unitarias; en la E2E, un servidor local que imita `sendMessage` (`TELEGRAM_API_BASE`) |
+| Claude (IA) | ❌ no hay clave | Proveedor guionado en pruebas; en la E2E **sin proveedor**: la tarea falla con aviso honesto |
+| Composio / conectores | ❌ | `FakeAdapter` en pruebas |
+| Adaptadores (URL, cabeceras, cuerpo) | Probados con `fetch` simulado | **Formato sin verificar** contra la documentación oficial (dominios bloqueados en la sesión) |
+
+### Los 12 casos pedidos
+1 vinculación autorizada (Telegram y WhatsApp, `/start`, caducidad, un solo uso, canal equivocado, consentimiento, hash en BD, sin código en registros) · 2 desconocido rechazado (sin datos, 1 respuesta/h, bloqueo por 5 intentos) · 3 mensaje válido (ayuda con nombre/bienvenida de la agencia) · 4 selección de empresa (pregunta, número, nombre, inexistente, una sola) · 5 creación de tarea (empresa y empleado correctos, `createTask`, `channel_tasks`, datos faltantes) · 6 resultado (aviso + `ver resultados`) · 7 error (falla, sin IA, presupuesto agotado) · 8 aprobación/rechazo (código por acción, «sí/ok» no aprueban, dos pasos, vencimiento, aprobación caducada, permisos re-comprobados, código de otra persona, bloqueo por intentos, aprobaciones creadas en la web) · 9 duplicados (mismo update/wamid, tarea idéntica, trabajo en cola) · 10 separación entre agencias (no ve, no estado, no resultados, no empresa ajena; marca por agencia; alcance de revocación) · 11 revocación (corta acceso, cancela envíos/aprobaciones/ejecución, re-vinculación, revocación por agencia, pérdida de acceso inmediata) · 12 límites (presupuesto, 15 msg/min, 30 salientes/h, avisos/día de agencia).
+Además: webhooks (401 sin/mal secreto, firma alterada, verificación GET, grupos/bots/estados ignorados), preferencias, ventana de 24 h de WhatsApp con/sin plantilla, resumen diario, alerta del 80 %, reintentos, cola, cifrado de credenciales por agencia, validación de adjuntos, inyección en el texto del chat.
+
+**E2E por HTTP (15 comprobaciones ✓):** consentimiento obligatorio, código en pantalla y no en la URL, enlace `t.me/<bot>?start=`, webhook 401, chat desconocido, vinculación, código no reutilizable, empresas solo de su agencia, tarea en lenguaje natural con webhook duplicado (1 sola), cola ejecuta con el motor existente y avisa el error, cliente de otra agencia «no encontrado», identidad enmascarada e historial en `/celular`, revocación desde la web, móvil.
+
+### Hallazgos durante las pruebas (corregidos)
+(1) Con la base embebida, rutas y páginas abrían **dos instancias** de PGlite → la página no veía lo que escribía el webhook (en Postgres real no ocurre); ahora la conexión es única por proceso. (2) La elección de empleado era demasiado tímida; se ponderó mejor. (3) Un código de vinculación enviado desde un chat ya vinculado se interpretaba como tarea. **Sin explicar:** en 1 de 4 ejecuciones de la E2E 3D apareció un error de JavaScript de página que no se reprodujo en 5 ejecuciones posteriores.
+
+### Pendiente / requiere configuración
+Probar un envío y recepción REALES (credenciales de bot de Telegram; cuenta Meta + número + token + plantilla aprobada para WhatsApp) y contrastar el formato de las APIs con su documentación vigente · costos de WhatsApp por conversación (verificar tarifa) · interpretación con IA del lenguaje natural · voz con transcripción y archivos (solo validación preparada) · bots/números propios por agencia · envío del resultado como documento · cola con servicio de trabajos dedicado (hoy: BD + `after()` + cron) · limitación por IP en webhooks.

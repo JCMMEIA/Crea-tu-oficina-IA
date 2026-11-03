@@ -41,3 +41,15 @@ export class FakeAdapter implements ConnectorAdapter {
   }
   async revoke(id: string) { this.revoked.push(id); }
 }
+
+import { ChannelAdapter, Channel, SendOptions, SendResult } from "@/server/messaging/types";
+/** SIMULACIÓN DE PRUEBA de un canal (Telegram/WhatsApp). No envía nada real. */
+export class FakeChannel implements ChannelAdapter {
+  sent: { to: string; text: string; template?: SendOptions["template"] }[] = []; failNext: SendResult | null = null; ok = true;
+  constructor(public channel: Channel) {}
+  configured() { return this.ok; }
+  async send(to: string, text: string, opts?: SendOptions): Promise<SendResult> {
+    if (this.failNext) { const f = this.failNext; this.failNext = null; return f; }
+    this.sent.push({ to, text, template: opts?.template }); return { ok: true, externalMsgId: `fake-${this.sent.length}` };
+  }
+}

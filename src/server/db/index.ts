@@ -44,10 +44,11 @@ export async function createPgDb(url: string): Promise<Db> {
   return { ...wrap(pool), close: () => pool.end() } as Db;
 }
 
-let shared: Promise<Db> | undefined;
+/** Conexión única por PROCESO (no por módulo): Next empaqueta rutas y páginas por separado y, sin esto, cada una abriría su propio PGlite. */
+const g = globalThis as unknown as { __ctoDb?: Promise<Db> };
 export function getDb(): Promise<Db> {
-  shared ??= process.env.DATABASE_URL
+  g.__ctoDb ??= process.env.DATABASE_URL
     ? createPgDb(process.env.DATABASE_URL)
     : createPgliteDb(path.join(process.cwd(), ".data", "pglite"));
-  return shared;
+  return g.__ctoDb;
 }

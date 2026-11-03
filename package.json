@@ -11,7 +11,8 @@
     "test": "vitest run",
     "secrets:check": "node scripts/check_secrets.mjs",
     "check": "npm run typecheck && npm run test && npm run secrets:check",
-    "automations:tick": "tsx scripts/automations_tick.ts"
+    "automations:tick": "tsx scripts/automations_tick.ts",
+    "jobs:tick": "tsx scripts/jobs_tick.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

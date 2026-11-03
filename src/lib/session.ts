@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb, Db } from "@/server/db";
-import { actorFromToken, agencyActorFromToken, Actor, AgencyActor } from "@/server/auth";
+import { actorFromToken, agencyActorFromToken, sessionUser, Actor, AgencyActor } from "@/server/auth";
 
 export const COOKIE = "cto_session";
 export const COMPANY_COOKIE = "cto_company";
@@ -34,3 +34,12 @@ export const STATUS_LABEL: Record<string, [string, string]> = {
   requested: ["Solicitado", ""], in_progress: ["En progreso", "warn"], completed: ["Completado", "ok"],
   failed: ["Fallido", "bad"], awaiting_approval: ["Esperando autorización", "warn"], rejected: ["Rechazado", "bad"],
 };
+
+/** Usuario autenticado (agencia o cliente), sin necesidad de empresa activa. */
+export async function requireUser() {
+  const db = await getDb();
+  const token = (await cookies()).get(COOKIE)?.value;
+  const user = await sessionUser(db, token);
+  if (!user) redirect("/login");
+  return { db, user, agency: await agencyActorFromToken(db, token) };
+}

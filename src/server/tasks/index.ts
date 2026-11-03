@@ -208,6 +208,12 @@ export async function decideApproval(db: Db, actor: Actor, approvalId: string, a
   assertCan(actor, "approvals:decide");
   const a = (await db.query("SELECT * FROM approvals WHERE id=$1 AND company_id=$2", [approvalId, actor.companyId]))[0];
   if (!a) throw new Error("Aprobación no encontrada.");
+  if (a.expires_at && new Date(a.expires_at) < new Date() && a.status === "pending") {
+    await db.query("UPDATE approvals SET status='rejected', decided_by='sistema (expirada)', decided_at=now() WHERE id=$1 AND status='pending'", [approvalId]);
+    await db.query("UPDATE tasks SET status='rejected', finished_at=now() WHERE id=$1", [a.task_id]);
+    await event(db, actor.companyId, a.task_id, "approval_rejected", { approvalId, reason: "expirada" });
+    throw new Error("La solicitud expiró y se canceló. Pídele al empleado que la genere de nuevo.");
+  }
   const claimed = await db.query("UPDATE approvals SET status=$2, decided_by=$3, decided_at=now() WHERE id=$1 AND status='pending' RETURNING id", [approvalId, approve ? "approved" : "rejected", actor.email]);
   if (!claimed.length) throw new Error("Esta solicitud ya fue resuelta.");
   await audit(db, { companyId: actor.companyId, userId: actor.userId }, approve ? "approval.approve" : "approval.reject", approvalId, { toolkit: a.toolkit, action: a.action });

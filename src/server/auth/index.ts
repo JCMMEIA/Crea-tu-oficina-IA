@@ -92,7 +92,7 @@ export async function login(db: Db, emailRaw: string, password: string): Promise
 
 export async function logout(db: Db, token: string) { await db.query("DELETE FROM sessions WHERE token_hash=$1", [sha(token)]); }
 
-async function sessionUser(db: Db, token: string | undefined) {
+export async function sessionUser(db: Db, token: string | undefined) {
   if (!token) return null;
   const r = await db.query<{ user_id: string; email: string }>(
     "SELECT s.user_id, u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at > now()", [sha(token)]);
