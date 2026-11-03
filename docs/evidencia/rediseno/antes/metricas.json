@@ -1,0 +1,461 @@
+[
+ {
+  "pantalla": "01-landing",
+  "url": "/",
+  "palabras": 636,
+  "campos": 6,
+  "botones": 4,
+  "enlaces": 6,
+  "jerga": {
+   "skills?": 4,
+   "agentes?": 5,
+   "integraci[oó]n(?:es)?": 1,
+   "plantillas?": 2,
+   "ia": 6,
+   "evidencia": 1
+  },
+  "jergaTotal": 19,
+  "scrollX": false,
+  "alto": 3908
+ },
+ {
+  "pantalla": "02-registro",
+  "url": "/registro",
+  "palabras": 35,
+  "campos": 5,
+  "botones": 1,
+  "enlaces": 1,
+  "jerga": {
+   "ia": 1
+  },
+  "jergaTotal": 1,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "03-login",
+  "url": "/login",
+  "palabras": 9,
+  "campos": 2,
+  "botones": 1,
+  "enlaces": 1,
+  "jerga": {},
+  "jergaTotal": 0,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "10-panel-agencia",
+  "url": "/agencia",
+  "palabras": 274,
+  "campos": 0,
+  "botones": 3,
+  "enlaces": 18,
+  "jerga": {
+   "skills?": 2,
+   "agentes?": 2,
+   "api": 1,
+   "desplegar|desplegado|despliegue": 1,
+   "anthropic": 1,
+   "tarifas?": 1,
+   "ia": 6,
+   "usd|us\\$": 9,
+   "owner": 1
+  },
+  "jergaTotal": 24,
+  "scrollX": false,
+  "alto": 1200
+ },
+ {
+  "pantalla": "11-clientes",
+  "url": "/agencia/clientes",
+  "palabras": 156,
+  "campos": 4,
+  "botones": 6,
+  "enlaces": 12,
+  "jerga": {
+   "skills?": 1,
+   "agentes?": 1,
+   "ia": 2,
+   "usd|us\\$": 7,
+   "owner": 1
+  },
+  "jergaTotal": 12,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "12-cliente-detalle",
+  "url": "/agencia/clientes/8b2ae9d5-f9ca-4d1a-873a-85bc22a49f3c",
+  "palabras": 297,
+  "campos": 7,
+  "botones": 7,
+  "enlaces": 30,
+  "jerga": {
+   "skills?": 1,
+   "agentes?": 5,
+   "crm": 2,
+   "desplegar|desplegado|despliegue": 2,
+   "ia": 3,
+   "usd|us\\$": 3,
+   "owner": 1,
+   "viewer": 1
+  },
+  "jergaTotal": 18,
+  "scrollX": false,
+  "alto": 1458
+ },
+ {
+  "pantalla": "13-servicios",
+  "url": "/agencia/servicios",
+  "palabras": 392,
+  "campos": 49,
+  "botones": 14,
+  "enlaces": 9,
+  "jerga": {
+   "skills?": 1,
+   "agentes?": 7,
+   "crm": 1,
+   "tarifas?": 3,
+   "plantillas?": 1,
+   "ia": 5,
+   "usd|us\\$": 4,
+   "borrador": 1,
+   "owner": 1
+  },
+  "jergaTotal": 24,
+  "scrollX": false,
+  "alto": 1599
+ },
+ {
+  "pantalla": "14-skills-agencia",
+  "url": "/agencia/skills?plantilla=analista-meta-ads",
+  "palabras": 264,
+  "campos": 4,
+  "botones": 3,
+  "enlaces": 50,
+  "jerga": {
+   "skills?": 4,
+   "agentes?": 5,
+   "crm": 1,
+   "plantillas?": 1,
+   "ia": 1,
+   "owner": 1
+  },
+  "jergaTotal": 13,
+  "scrollX": false,
+  "alto": 983
+ },
+ {
+  "pantalla": "15-propuestas",
+  "url": "/agencia/propuestas",
+  "palabras": 117,
+  "campos": 10,
+  "botones": 3,
+  "enlaces": 9,
+  "jerga": {
+   "skills?": 1,
+   "agentes?": 1,
+   "ia": 1,
+   "usd|us\\$": 3,
+   "owner": 1
+  },
+  "jergaTotal": 7,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "16-identidad",
+  "url": "/agencia/identidad",
+  "palabras": 102,
+  "campos": 6,
+  "botones": 3,
+  "enlaces": 9,
+  "jerga": {
+   "skills?": 1,
+   "agentes?": 1,
+   "ia": 1,
+   "owner": 1
+  },
+  "jergaTotal": 4,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "17-soporte",
+  "url": "/agencia/soporte",
+  "palabras": 73,
+  "campos": 0,
+  "botones": 2,
+  "enlaces": 10,
+  "jerga": {
+   "skills?": 1,
+   "agentes?": 1,
+   "ia": 1,
+   "owner": 1
+  },
+  "jergaTotal": 4,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "18-oficina-3d",
+  "url": "/agencia/oficina-3d?cliente=8b2ae9d5-f9ca-4d1a-873a-85bc22a49f3c",
+  "palabras": 199,
+  "campos": 0,
+  "botones": 13,
+  "enlaces": 13,
+  "jerga": {
+   "skills?": 1,
+   "agentes?": 1,
+   "ia": 4,
+   "owner": 1
+  },
+  "jergaTotal": 7,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "19-celular",
+  "url": "/celular",
+  "palabras": 353,
+  "campos": 48,
+  "botones": 3,
+  "enlaces": 1,
+  "jerga": {
+   "plantillas?": 1,
+   "versi[oó]n": 1,
+   "ia": 1
+  },
+  "jergaTotal": 3,
+  "scrollX": false,
+  "alto": 2259
+ },
+ {
+  "pantalla": "20-oficina-cliente",
+  "url": "/oficina",
+  "palabras": 178,
+  "campos": 1,
+  "botones": 4,
+  "enlaces": 17,
+  "jerga": {
+   "agentes?": 1,
+   "api": 1,
+   "anthropic": 1,
+   "tarifas?": 1,
+   "ia": 3,
+   "usd|us\\$": 2,
+   "owner": 1
+  },
+  "jergaTotal": 10,
+  "scrollX": false,
+  "alto": 938
+ },
+ {
+  "pantalla": "21-departamentos",
+  "url": "/departamentos",
+  "palabras": 249,
+  "campos": 22,
+  "botones": 10,
+  "enlaces": 32,
+  "jerga": {
+   "agentes?": 2,
+   "crm": 2,
+   "owner": 1
+  },
+  "jergaTotal": 5,
+  "scrollX": false,
+  "alto": 2214
+ },
+ {
+  "pantalla": "22-ficha-empleado",
+  "url": "/empleados/7cecb2d0-f30b-42fa-b3c5-504c749c5829",
+  "palabras": 184,
+  "campos": 6,
+  "botones": 9,
+  "enlaces": 14,
+  "jerga": {
+   "skills?": 5,
+   "agentes?": 2,
+   "tokens?": 1,
+   "ia": 1,
+   "owner": 1
+  },
+  "jergaTotal": 10,
+  "scrollX": false,
+  "alto": 1071
+ },
+ {
+  "pantalla": "23-editar-skill",
+  "url": "/empleados/7cecb2d0-f30b-42fa-b3c5-504c749c5829/skill",
+  "palabras": 185,
+  "campos": 12,
+  "botones": 5,
+  "enlaces": 16,
+  "jerga": {
+   "skills?": 3,
+   "agentes?": 2,
+   "plantillas?": 2,
+   "json": 1,
+   "versi[oó]n": 4,
+   "owner": 1
+  },
+  "jergaTotal": 13,
+  "scrollX": false,
+  "alto": 2051
+ },
+ {
+  "pantalla": "24-editar-skill-avanzado",
+  "url": "/empleados/7cecb2d0-f30b-42fa-b3c5-504c749c5829/skill?modo=avanzado",
+  "palabras": 180,
+  "campos": 15,
+  "botones": 5,
+  "enlaces": 16,
+  "jerga": {
+   "skills?": 3,
+   "agentes?": 2,
+   "plantillas?": 2,
+   "json": 1,
+   "versi[oó]n": 5,
+   "owner": 1,
+   "claves?": 1
+  },
+  "jergaTotal": 15,
+  "scrollX": false,
+  "alto": 2434
+ },
+ {
+  "pantalla": "25-conexiones",
+  "url": "/conexiones",
+  "palabras": 392,
+  "campos": 1,
+  "botones": 21,
+  "enlaces": 12,
+  "jerga": {
+   "agentes?": 2,
+   "api": 4,
+   "crm": 1,
+   "composio": 29,
+   "owner": 1,
+   "toolkit": 2
+  },
+  "jergaTotal": 39,
+  "scrollX": false,
+  "alto": 2274
+ },
+ {
+  "pantalla": "26-construir-paso1",
+  "url": "/construir?paso=1",
+  "palabras": 112,
+  "campos": 11,
+  "botones": 5,
+  "enlaces": 17,
+  "jerga": {
+   "owner": 1
+  },
+  "jergaTotal": 1,
+  "scrollX": false,
+  "alto": 1297
+ },
+ {
+  "pantalla": "27-construir-paso3",
+  "url": "/construir?paso=3",
+  "palabras": 1107,
+  "campos": 1,
+  "botones": 44,
+  "enlaces": 26,
+  "jerga": {
+   "agentes?": 2,
+   "crm": 1,
+   "ia": 38,
+   "owner": 1,
+   "evidencia": 2,
+   "claves?": 2
+  },
+  "jergaTotal": 46,
+  "scrollX": false,
+  "alto": 4656
+ },
+ {
+  "pantalla": "28-conocimiento",
+  "url": "/conocimiento",
+  "palabras": 177,
+  "campos": 24,
+  "botones": 4,
+  "enlaces": 12,
+  "jerga": {
+   "agentes?": 1,
+   "crm": 1,
+   "owner": 1
+  },
+  "jergaTotal": 3,
+  "scrollX": false,
+  "alto": 999
+ },
+ {
+  "pantalla": "29-automatizaciones",
+  "url": "/automatizaciones",
+  "palabras": 214,
+  "campos": 12,
+  "botones": 5,
+  "enlaces": 12,
+  "jerga": {
+   "agentes?": 1,
+   "crm": 1,
+   "owner": 1
+  },
+  "jergaTotal": 3,
+  "scrollX": false,
+  "alto": 1126
+ },
+ {
+  "pantalla": "30-actividad",
+  "url": "/actividad",
+  "palabras": 73,
+  "campos": 1,
+  "botones": 3,
+  "enlaces": 12,
+  "jerga": {
+   "owner": 1
+  },
+  "jergaTotal": 1,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "31-aprobaciones",
+  "url": "/aprobaciones",
+  "palabras": 66,
+  "campos": 1,
+  "botones": 3,
+  "enlaces": 12,
+  "jerga": {
+   "owner": 1
+  },
+  "jergaTotal": 1,
+  "scrollX": false,
+  "alto": 800
+ },
+ {
+  "pantalla": "32-ayuda",
+  "url": "/ayuda",
+  "palabras": 169,
+  "campos": 1,
+  "botones": 3,
+  "enlaces": 12,
+  "jerga": {
+   "skills?": 1,
+   "api": 2,
+   "integraci[oó]n(?:es)?": 1,
+   "composio": 3,
+   "anthropic": 1,
+   "tarifas?": 1,
+   "ia": 1,
+   "usd|us\\$": 2,
+   "owner": 1
+  },
+  "jergaTotal": 13,
+  "scrollX": false,
+  "alto": 800
+ }
+]
