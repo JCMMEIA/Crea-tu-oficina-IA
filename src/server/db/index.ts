@@ -15,6 +15,7 @@ const schema = () => fs.readFileSync(path.join(process.cwd(), "src/server/db/sch
 /** PGlite = Postgres embebido (desarrollo y pruebas). Mismo SQL que Postgres de producción. */
 export async function createPgliteDb(dataDir?: string): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
+  if (dataDir) fs.mkdirSync(path.dirname(dataDir), { recursive: true });
   const pg = dataDir ? new PGlite(dataDir) : new PGlite();
   await pg.exec(schema());
   const wrap = (c: { query: (s: string, p?: unknown[]) => Promise<{ rows: any[] }> }): Omit<Db, "close"> => ({
