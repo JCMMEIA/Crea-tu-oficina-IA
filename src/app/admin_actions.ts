@@ -15,7 +15,7 @@ import { setModelEnabled, updatePlanLimit, updateSettings, upsertModel } from "@
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "");
 async function run(back: string, fn: () => Promise<unknown>) {
-  try { await fn(); } catch (e: any) { if (e?.digest) throw e; return redirect(back + (back.includes("?") ? "&" : "?") + "error=" + encodeURIComponent(e?.name === "ZodError" ? "Revisa los datos." : e.message)); }
+  try { await fn(); } catch (e: any) { if (e?.digest) throw e; return redirect(back + (back.includes("?") ? "&" : "?") + "error=" + encodeURIComponent(e?.name === "ZodError" ? (e.issues?.[0]?.message ?? "Revisa los datos.") : e.message)); }
   revalidatePath("/admin", "layout"); redirect(back);
 }
 export async function leadStatusAction(f: FormData) { const { db, op } = await requireOperator(); await run(s(f, "back") || "/admin/prospectos", () => setLeadStatus(db, op, s(f, "id"), s(f, "status"))); }
