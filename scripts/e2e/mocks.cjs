@@ -11,7 +11,11 @@ http.createServer(async (req, res) => {
   if (req.method === "POST" && u.pathname === "/v1/billing_portal/sessions") return send(200, { url: `${base}/portal` });
   if (u.pathname === "/portal") return send(200, "<h1>Portal de pagos (SIMULADO)</h1>", "text/html");
   if (req.method === "POST" && u.pathname === "/emails") { const j = JSON.parse(await body(req)); mails.push(j); return send(200, { id: "mail_" + mails.length }); }
-  if (req.method === "POST" && u.pathname === "/v1/messages") { aiCalls++; await body(req); return send(200, { id: "msg_sim", type: "message", role: "assistant", model: "simulado", content: [{ type: "text", text: "Respuesta SIMULADA del modelo para la prueba de extremo a extremo." }], stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 120, output_tokens: 30 } }); }
+  if (req.method === "POST" && u.pathname === "/v1/messages") { aiCalls++; const raw = await body(req); let text = "Respuesta SIMULADA del modelo para la prueba de extremo a extremo.";
+    try { const j = JSON.parse(raw); const sys = typeof j.system === "string" ? j.system : JSON.stringify(j.system ?? ""); const msg = JSON.stringify(j.messages ?? []);
+      if (msg.includes("TAREA GUIADA")) { const neg = (sys.match(/Negocio: ([^\n\\]+)/) || [])[1] || "(sin negocio)"; const heads = [...msg.matchAll(/«## ([^»]+)»/g)].map((m) => m[1]); const uniq = [...new Set(heads)];
+        text = "[SIMULADO — respuesta de prueba, no de la IA real]\n\n" + uniq.map((h) => `## ${h}\nContenido simulado para ${neg}.`).join("\n\n"); } } catch {}
+    return send(200, { id: "msg_sim", type: "message", role: "assistant", model: "simulado", content: [{ type: "text", text }], stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 1200, output_tokens: 400 } }); }
   if (u.pathname === "/__sessions") return send(200, sessions); if (u.pathname === "/__mails") return send(200, mails); if (u.pathname === "/__subcalls") return send(200, subCalls); if (u.pathname === "/__ai") return send(200, { calls: aiCalls });
   send(404, { error: "no existe" });
 }).listen(PORT, "127.0.0.1", () => console.log("mocks en " + base));

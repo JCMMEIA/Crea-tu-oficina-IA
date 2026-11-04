@@ -1,3 +1,4 @@
+import { buildBrainContext } from "../brain";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Db, newId } from "../db";
@@ -105,9 +106,11 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
   const { defs, map } = buildTools(run, connected);
 
   const knowledge = await searchForEmployee(db, actor.companyId, task.employee_id, `${task.instruction} ${task.context}`);
+  const brain = await buildBrainContext(db, actor.companyId); // Cerebro Empresarial: la ficha de ESTA oficina llega a la IA en cada ejecución
   const mates = await db.query("SELECT id,name,role_title FROM employees WHERE company_id=$1 AND status='active' AND id<>$2 ORDER BY created_at LIMIT 30", [actor.companyId, task.employee_id]);
   const system = [
     run.skill.systemPrompt,
+    brain.text,
     mates.length ? `\n## Tus compañeros\nPuedes pedirles trabajo con delegate_task (usa su id exacto):\n${mates.map((m) => `- ${m.name} — ${m.role_title} (id: ${m.id})`).join("\n")}` : "",
     run.skill.procedures.length ? `\n## Procedimientos\n${run.skill.procedures.map((p) => `- ${p}`).join("\n")}` : "",
     run.skill.outputFormat ? `\n## Formato de respuesta\n${run.skill.outputFormat}` : "",
@@ -126,6 +129,7 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
 
   await db.query("UPDATE tasks SET status='in_progress', skill_version=$2 WHERE id=$1", [taskId, run.version]);
   await event(db, actor.companyId, taskId, "started", { skillVersion: run.version, model: provider.id });
+  await event(db, actor.companyId, taskId, "context_used", { profileFields: brain.fields, approxTokens: brain.approxTokens, docs: knowledge.map((k) => ({ id: k.id, title: k.title })) });
 
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), run.skill.autonomy.maxTaskSeconds * 1000);

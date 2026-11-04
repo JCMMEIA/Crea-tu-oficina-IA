@@ -12,6 +12,7 @@ export const profileSchema = z.object({
   country: z.string().max(100).optional(), website: z.string().max(300).optional(), social: z.string().max(500).optional(),
   competitors: z.string().max(1000).optional(), goals: z.string().max(2000).optional(), problems: z.string().max(2000).optional(),
   apps: z.string().max(1000).optional(),
+  valueProp: z.string().max(1000).optional(), tone: z.string().max(800).optional(), rules: z.string().max(1000).optional(),
 }).partial();
 
 export async function updateProfile(db: Db, actor: Actor, input: unknown) {
