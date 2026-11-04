@@ -269,20 +269,7 @@ U
 run ln -s /etc/nginx/sites-available/crea-oficina /etc/nginx/sites-enabled/crea-oficina; anotar archivo /etc/nginx/sites-available/crea-oficina; anotar archivo /etc/nginx/sites-enabled/crea-oficina; anotar archivo /etc/nginx/conf.d/crea-oficina-limites.conf
 if [ "$DRY" = 0 ]; then nginx -t || { rm -f /etc/nginx/sites-enabled/crea-oficina; die "nginx -t falló con nuestro sitio; se retiró y no se recargó."; }; systemctl reload nginx; fi
 run certbot certonly --webroot -w /var/www/crea-acme -d "$DOM" -m "$CORREO_CERT" --agree-tos --no-eff-email -n; anotar certificado "$DOM"
-put /etc/nginx/sites-available/crea-oficina 644 root:root <<U
-server {
-  listen 80; listen [::]:80; server_name $DOM; server_tokens off;
-  location ^~ /.well-known/acme-challenge/ { root /var/www/crea-acme; }
-  location / { return 301 https://\$host\$request_uri; }
-}
-server {
-  listen 443 ssl http2; listen [::]:443 ssl http2; server_name $DOM; server_tokens off;
-  ssl_certificate /etc/letsencrypt/live/$DOM/fullchain.pem; ssl_certificate_key /etc/letsencrypt/live/$DOM/privkey.pem;
-  ssl_protocols TLSv1.2 TLSv1.3; ssl_session_cache shared:crea_ssl:5m; ssl_session_timeout 1d;
-  client_max_body_size 1m;
-  location / { limit_req zone=crea_ofi burst=60 nodelay; proxy_pass http://127.0.0.1:$PORT; proxy_http_version 1.1; proxy_set_header Host \$host; proxy_set_header X-Forwarded-For \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme; proxy_read_timeout 120s; }
-}
-U
+nginx_conf_completa "$DOM" "$PORT" | put /etc/nginx/sites-available/crea-oficina 644 root:root
 if [ "$DRY" = 0 ]; then nginx -t || die "nginx -t falló con el bloque HTTPS. El sitio HTTP sigue activo; revisa /etc/nginx/sites-available/crea-oficina."; systemctl reload nginx; fi; cmpoc "Nginx y HTTPS"
 
 # ================= 9. Respaldos y verificación final =================

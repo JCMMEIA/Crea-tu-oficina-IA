@@ -87,3 +87,23 @@ paquetes_seguros() {
   local rc=0; apt_verificar "$@" || rc=$?; apt_decidir "$rc"
   run apt-get install -y --no-install-recommends -o DPkg::Lock::Timeout=180 "$@"
 }
+
+# ---- Configuración de Nginx del sitio (HTTP: desafío de Let's Encrypt + redirección; HTTPS: proxy a la aplicación) ----
+# Una sola definición, usada por el instalador y por continuar_fase8.sh (así no se desvían).
+nginx_conf_completa() {  # DOMINIO [PUERTO]
+  local dom="$1" port="${2:-$PORT}"
+  cat <<NG
+server {
+  listen 80; listen [::]:80; server_name $dom; server_tokens off;
+  location ^~ /.well-known/acme-challenge/ { root /var/www/crea-acme; }
+  location / { return 301 https://\$host\$request_uri; }
+}
+server {
+  listen 443 ssl http2; listen [::]:443 ssl http2; server_name $dom; server_tokens off;
+  ssl_certificate /etc/letsencrypt/live/$dom/fullchain.pem; ssl_certificate_key /etc/letsencrypt/live/$dom/privkey.pem;
+  ssl_protocols TLSv1.2 TLSv1.3; ssl_session_cache shared:crea_ssl:5m; ssl_session_timeout 1d;
+  client_max_body_size 1m;
+  location / { limit_req zone=crea_ofi burst=60 nodelay; proxy_pass http://127.0.0.1:$port; proxy_http_version 1.1; proxy_set_header Host \$host; proxy_set_header X-Forwarded-For \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme; proxy_read_timeout 120s; }
+}
+NG
+}
