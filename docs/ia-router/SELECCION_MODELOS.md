@@ -1,5 +1,7 @@
 # Selección de modelos: gratuito, económico y avanzado
 
+> **Actualización 2026-11-04:** la selección real de modelos, precios y el plan de prueba están en [SELECCION_FINAL_2026-11-04.md](SELECCION_FINAL_2026-11-04.md). Los datos de este documento anteriores a esa fecha eran protocolo sin datos reales.
+
 ## Estado: PENDIENTE — ningún modelo seleccionado
 Falta el acceso a `openrouter.ai` (ver `OPENROUTER_INVESTIGACION.md`). Lo que sí queda definido es **cómo** se elige, para que la decisión sea verificable y repetible.
 

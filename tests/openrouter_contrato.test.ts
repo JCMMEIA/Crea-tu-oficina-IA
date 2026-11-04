@@ -29,7 +29,7 @@ describe("adaptador de OpenRouter contra el contrato supuesto", () => {
   it("arma la petición: ruta, autenticación, modelo, mensajes, límite de salida, contabilidad de uso y sin fallbacks de proveedor", async () => {
     await call(new OpenRouterBackend(KEY, base), "vendor/modelo"); const s = seen[0];
     expect(s.path).toBe("/chat/completions"); expect(s.auth).toBe(`Bearer ${KEY}`); expect(s.body.model).toBe("vendor/modelo"); expect(s.body.messages[0]).toEqual({ role: "system", content: "SYS" }); expect(s.body.messages[1]).toEqual({ role: "user", content: "hola" });
-    expect(s.body.max_tokens).toBe(100); expect(s.body.usage).toEqual({ include: true }); expect(s.body.provider.allow_fallbacks).toBe(false); expect(s.body.tools).toBeUndefined();
+    expect(s.body.max_tokens).toBe(100); expect(s.body.usage).toBeUndefined(); expect(s.body.provider.allow_fallbacks).toBe(false); expect(s.body.tools).toBeUndefined();
   });
   it("la privacidad viaja según la sensibilidad: pública sin filtro; interna data_collection=deny; confidencial además zdr", async () => {
     const b = new OpenRouterBackend(KEY, base); await call(b, "m", "public"); await call(b, "m", "internal"); await call(b, "m", "confidential");
@@ -45,9 +45,16 @@ describe("adaptador de OpenRouter contra el contrato supuesto", () => {
     behavior.c = () => ok("x", { cost: 0.00123 }); const b = new OpenRouterBackend(KEY, base); const r1 = await call(b, "c"); expect(r1.costUsd).toBe(0.00123); expect(r1.providerName).toBe("ProveedorX"); const r2 = await call(b, "sin-costo"); expect(r2.costUsd).toBeUndefined();
     behavior.d = () => ok("x", { cost: "caro" }); expect((await call(b, "d")).costUsd).toBeUndefined(); // un valor no numérico se ignora
   });
+  it("tope de gasto (formato oficial verificado 2026-11-04): 403 con limit_source → sin saldo; 402 de presupuesto en vuelo → transitorio", async () => {
+    const b = new OpenRouterBackend(KEY, base);
+    behavior.e = () => ({ status: 403, json: { error: { code: 403, message: "Budget limit exceeded", metadata: { limit_source: "openrouter_key_limit" } } } });
+    await expect(call(b, "e")).rejects.toMatchObject({ name: "BackendError", code: "credits" });
+    behavior.e = () => ({ status: 402, json: { error: { code: 402, metadata: { limit_source: "openrouter_in_flight_budget" } } } });
+    await expect(call(b, "e")).rejects.toBeInstanceOf(TransientProviderError);
+  });
   it("errores: 401/403 → auth; 402 → sin saldo; 400 → solicitud inválida; 408/429/5xx/red/respuesta vacía → transitorio; argumentos de herramienta rotos → inválido", async () => {
     const b = new OpenRouterBackend(KEY, base);
-    for (const [st, code] of [[401, "auth"], [403, "auth"], [402, "credits"], [400, "bad_request"]] as const) { behavior.e = () => ({ status: st, json: { error: { message: "x" } } }); await expect(call(b, "e")).rejects.toMatchObject({ name: "BackendError", code }); }
+    for (const [st, code] of [[401, "auth"], [402, "credits"], [400, "bad_request"]] as const) { behavior.e = () => ({ status: st, json: { error: { message: "x" } } }); await expect(call(b, "e")).rejects.toMatchObject({ name: "BackendError", code }); }
     for (const st of [408, 429, 500, 502, 503]) { behavior.e = () => ({ status: st, json: {} }); await expect(call(b, "e")).rejects.toBeInstanceOf(TransientProviderError); }
     behavior.e = () => ({ status: 200, json: { choices: [] } }); await expect(call(b, "e")).rejects.toBeInstanceOf(TransientProviderError); behavior.e = () => ({ status: 200, raw: "no es json" }); await expect(call(b, "e")).rejects.toBeInstanceOf(TransientProviderError);
     behavior.e = () => ({ status: 200, json: { choices: [{ message: { content: "", tool_calls: [{ id: "1", function: { name: "n", arguments: "{roto" } }] } }] } }); await expect(call(b, "e")).rejects.toBeInstanceOf(BackendError);

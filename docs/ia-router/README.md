@@ -1,5 +1,7 @@
 # Router de modelos de IA y cuotas (rama `claude/router-ia-solo`)
 
+> **Actualización 2026-11-04:** ver [SELECCION_FINAL_2026-11-04.md](SELECCION_FINAL_2026-11-04.md) (modelos elegidos, precios reales, compatibilidad verificada con la documentación oficial).
+
 **Rama limpia apilada solo sobre el PR #3** (Cerebro y tareas guiadas): contiene únicamente el router, las cuotas, el panel `/admin/ia`, la pantalla de consumo y las herramientas para la prueba real. **No** incluye afiliados ni landing (esos viven aparte: PR #4 para la landing; el programa de afiliados está pendiente de plan). Se extrajo del prototipo PR #5 (ver `docs/integracion/DEPENDENCIAS_PR5.md`).
 
 | Documento | Contenido |

@@ -4,7 +4,7 @@ import type { Sensitivity } from "./types";
 /**
  * Adaptadores de proveedor. El router los llama con el id real del modelo. Nunca imprimen ni devuelven claves.
  * NOTA DE VERIFICACIÓN: el formato de OpenRouter sigue la interfaz compatible con OpenAI. Los campos `provider.data_collection`/`provider.zdr` constan en documentación pública
- * consultada solo por fragmentos de búsqueda; `usage.cost` y `usage.include` NO se verificaron: el costo se toma del proveedor SOLO si viene como número y, si no, se estima con el precio del catálogo.
+ * consultada solo por fragmentos de búsqueda; `usage.cost` se verificó en la documentación oficial (2026-11-04; usage.include está obsoleto y ya no se envía): el costo se toma del proveedor SOLO si viene como número y, si no, se estima con el precio del catálogo.
  */
 export interface BackendResult extends CompleteResult { costUsd?: number; providerName?: string }
 export interface Backend { id: "openrouter" | "anthropic"; configured(): boolean; complete(modelId: string, req: CompleteRequest, opts: { sensitivity: Sensitivity }): Promise<BackendResult> }
@@ -24,7 +24,7 @@ export class OpenRouterBackend implements Backend {
   constructor(private key = process.env.OPENROUTER_API_KEY ?? "", private base = (process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "")) {}
   configured() { return this.key.length > 10; }
   async complete(modelId: string, req: CompleteRequest, opts: { sensitivity: Sensitivity }): Promise<BackendResult> {
-    const body: Record<string, unknown> = { model: modelId, messages: toOpenAi(req), max_tokens: req.maxTokens, usage: { include: true },
+    const body: Record<string, unknown> = { model: modelId, messages: toOpenAi(req), max_tokens: req.maxTokens,
       // Privacidad: interna → solo proveedores que no recolectan datos; confidencial → además retención cero. Fallbacks de proveedor desactivados: el router decide, no el proveedor.
       provider: { allow_fallbacks: false, ...(opts.sensitivity !== "public" ? { data_collection: "deny" } : {}), ...(opts.sensitivity === "confidential" ? { zdr: true } : {}) } };
     if (req.tools.length) body.tools = req.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input_schema } }));
@@ -32,8 +32,14 @@ export class OpenRouterBackend implements Backend {
     try { res = await fetch(`${this.base}/chat/completions`, { method: "POST", signal: req.signal, headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.key}`, "X-Title": "Crea tu Oficina IA" }, body: JSON.stringify(body) }); }
     catch (e: any) { throw new TransientProviderError(`red: ${String(e?.message ?? e).slice(0, 120)}`); }
     if (res.status === 408 || res.status === 429 || res.status >= 500) throw new TransientProviderError(`OpenRouter respondió ${res.status}`);
-    if (res.status === 401 || res.status === 403) throw new BackendError("OpenRouter rechazó la clave del servidor.", "auth");
-    if (res.status === 402) throw new BackendError("OpenRouter sin saldo.", "credits");
+    // Verificado contra la documentación oficial (2026-11-04): un tope de gasto de la clave/guardrail devuelve 403 con metadata.limit_source;
+    // un 402 con metadata.limit_source=openrouter_in_flight_budget es transitorio (se reintenta tras Retry-After).
+    if (res.status === 401 || res.status === 402 || res.status === 403) {
+      const ej: any = await res.json().catch(() => null); const src = String(ej?.error?.metadata?.limit_source ?? "");
+      if (res.status === 402 && src === "openrouter_in_flight_budget") throw new TransientProviderError("OpenRouter: presupuesto en vuelo, reintentar");
+      if (res.status === 402 || (res.status === 403 && src)) throw new BackendError(`OpenRouter: tope de gasto o saldo agotado (${src || "credits"}).`, "credits");
+      throw new BackendError("OpenRouter rechazó la clave del servidor.", "auth");
+    }
     if (!res.ok) throw new BackendError(`OpenRouter respondió ${res.status}`, "bad_request");
     const j: any = await res.json().catch(() => null); const msg = j?.choices?.[0]?.message; if (!msg) throw new TransientProviderError("respuesta vacía del proveedor");
     const toolCalls = (msg.tool_calls ?? []).map((c: any) => { let input: Record<string, unknown> = {}; try { input = JSON.parse(c.function?.arguments || "{}"); } catch { throw new BackendError("argumentos de herramienta no válidos", "bad_request"); } return { id: String(c.id), name: String(c.function?.name), input }; });
