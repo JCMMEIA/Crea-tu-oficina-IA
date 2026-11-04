@@ -286,3 +286,39 @@ CREATE INDEX IF NOT EXISTS emails_provider_idx ON emails(provider_id);
 CREATE INDEX IF NOT EXISTS emails_status_idx ON emails(status, created_at);
 -- Identidad de empleados: foto personalizada del cliente (imagen pequeña validada, data URL). El nombre propio usa employees.name.
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo text;
+
+
+-- ===== Router de modelos de IA, cuotas y registro de llamadas =====
+-- Catálogo de modelos EDITABLE desde /admin/ia. Un modelo solo se usa si enabled Y verified (precio y política de datos revisados por una persona). No hay precios «de fábrica».
+CREATE TABLE IF NOT EXISTS ai_models (
+  id text PRIMARY KEY, provider text NOT NULL CHECK (provider IN ('openrouter','anthropic')), model_id text NOT NULL, label text NOT NULL,
+  tier text NOT NULL CHECK (tier IN ('free','economy','premium')), max_level text NOT NULL DEFAULT 'B' CHECK (max_level IN ('A','B','C')),
+  price_in_usd_mtok numeric NOT NULL DEFAULT 0, price_out_usd_mtok numeric NOT NULL DEFAULT 0, context_window int NOT NULL DEFAULT 8000,
+  supports_tools boolean NOT NULL DEFAULT false, supports_json boolean NOT NULL DEFAULT false,
+  data_policy text NOT NULL DEFAULT 'unknown' CHECK (data_policy IN ('unknown','may_train','no_training','zero_retention')),
+  credit_weight numeric NOT NULL DEFAULT 1, enabled boolean NOT NULL DEFAULT false, verified boolean NOT NULL DEFAULT false, notes text NOT NULL DEFAULT '',
+  updated_by text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE (provider, model_id));
+CREATE TABLE IF NOT EXISTS ai_settings (key text PRIMARY KEY, value jsonb NOT NULL, updated_by text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now());
+-- Límites por plan (internos; NO son precios publicados). Cuota mensual en CRÉDITOS (= tokens × peso del modelo) y tope interno de gasto en USD por CUENTA.
+CREATE TABLE IF NOT EXISTS ai_plan_limits (
+  plan text PRIMARY KEY, monthly_credits bigint NOT NULL, monthly_budget_usd numeric NOT NULL, max_offices int NOT NULL DEFAULT 1,
+  allowed_tiers text[] NOT NULL DEFAULT ARRAY['free','economy']::text[], max_level text NOT NULL DEFAULT 'B' CHECK (max_level IN ('A','B','C')),
+  max_task_usd numeric NOT NULL DEFAULT 0.25, updated_by text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now());
+-- Uso del mes por cuenta (dueño de la oficina). Reservas y consumo viven en la MISMA fila para poder reservar con una sola sentencia atómica.
+CREATE TABLE IF NOT EXISTS ai_accounts (
+  account_id text NOT NULL, period date NOT NULL, credits_used bigint NOT NULL DEFAULT 0, credits_reserved bigint NOT NULL DEFAULT 0,
+  usd_used numeric NOT NULL DEFAULT 0, usd_reserved numeric NOT NULL DEFAULT 0, tokens_used bigint NOT NULL DEFAULT 0, calls int NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period));
+CREATE TABLE IF NOT EXISTS ai_reservations (
+  id text PRIMARY KEY, account_id text NOT NULL, period date NOT NULL, company_id text, task_id text, credits bigint NOT NULL, usd numeric NOT NULL,
+  status text NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved','settled','released')), created_at timestamptz NOT NULL DEFAULT now(), closed_at timestamptz);
+CREATE INDEX IF NOT EXISTS ai_reservations_open_idx ON ai_reservations(status, created_at);
+-- Una fila por INTENTO de llamada a un modelo (incluye los que fallan): auditoría de costo, fallback y calidad.
+CREATE TABLE IF NOT EXISTS ai_calls (
+  id bigserial PRIMARY KEY, account_id text NOT NULL, company_id text, task_id text, employee_id text, attempt int NOT NULL DEFAULT 1,
+  level text, sensitivity text, requested_model text, used_model text, provider text, status text NOT NULL, fallback_reason text,
+  input_tokens int NOT NULL DEFAULT 0, output_tokens int NOT NULL DEFAULT 0, credits bigint NOT NULL DEFAULT 0, cost_usd numeric NOT NULL DEFAULT 0, cost_source text NOT NULL DEFAULT 'estimado',
+  latency_ms int NOT NULL DEFAULT 0, validation jsonb, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS ai_calls_account_idx ON ai_calls(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ai_calls_task_idx ON ai_calls(task_id);
+CREATE TABLE IF NOT EXISTS ai_alerts (account_id text NOT NULL, period date NOT NULL, threshold int NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period, threshold));

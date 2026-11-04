@@ -20,7 +20,10 @@
     "admin:link": "tsx scripts/admin_link.ts",
     "tienda:estado": "tsx scripts/tienda_estado.ts",
     "correo:diagnostico": "tsx scripts/correo_diagnostico.ts",
-    "correo:procesar": "tsx scripts/correo_procesar.ts"
+    "correo:procesar": "tsx scripts/correo_procesar.ts",
+    "ia:preparado": "tsx scripts/ia/preparado.ts",
+    "ia:catalogo": "tsx scripts/ia/catalogo_openrouter.ts",
+    "ia:humo": "tsx scripts/ia/prueba_humo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
