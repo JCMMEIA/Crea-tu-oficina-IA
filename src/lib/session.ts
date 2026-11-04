@@ -5,12 +5,13 @@ import { actorFromToken, agencyActorFromToken, sessionUser, Actor, AgencyActor }
 
 export const COOKIE = "cto_session";
 export const COMPANY_COOKIE = "cto_company";
+export const OFFICE_COOKIE = "cto_office";
 
 export async function currentActor(): Promise<{ db: Db; actor: Actor | null; agency: AgencyActor | null }> {
   const db = await getDb();
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
-  const agency = await agencyActorFromToken(db, token);
+  const agency = await agencyActorFromToken(db, token, jar.get(OFFICE_COOKIE)?.value);
   // La empresa elegida viene en una cookie, pero SIEMPRE se revalida en backend (membresía directa o pertenencia a la agencia).
   const actor = await actorFromToken(db, token, jar.get(COMPANY_COOKIE)?.value) ?? (jar.get(COMPANY_COOKIE) ? await actorFromToken(db, token) : null);
   return { db, actor, agency };
@@ -41,7 +42,7 @@ export async function requireUser() {
   const token = (await cookies()).get(COOKIE)?.value;
   const user = await sessionUser(db, token);
   if (!user) redirect("/login");
-  return { db, user, agency: await agencyActorFromToken(db, token) };
+  return { db, user, agency: await agencyActorFromToken(db, token, (await cookies()).get(OFFICE_COOKIE)?.value) };
 }
 
 /** Panel de operador: exige sesión y que el correo esté en PLATFORM_ADMIN_EMAILS. Cualquier otro caso → 404 lógico (redirige al inicio). */

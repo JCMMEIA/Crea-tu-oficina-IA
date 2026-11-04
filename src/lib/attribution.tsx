@@ -31,3 +31,11 @@ export function trackCta(cta: string) {
 export function CtaLink({ href, cta, className, children, testId }: { href: string; cta: string; className?: string; children: React.ReactNode; testId?: string }) {
   return <a href={href} className={className} data-testid={testId} onClick={() => trackCta(cta)}>{children}</a>;
 }
+
+/** Botón de compra: cuenta el clic y lleva la fuente (utm/fbclid/referencia) al pago para medir de qué anuncio vino cada compra. */
+export function BuyLink({ cta, className, children, testId }: { cta: string; className?: string; children: React.ReactNode; testId?: string }) {
+  return <a href="/comprar" className={className} data-testid={testId} onClick={(e) => {
+    trackCta("comprar-" + cta);
+    try { const f = firstTouch(); const q = new URLSearchParams({ fuente: f.source, ...f.utm }); e.currentTarget.href = "/comprar?" + q.toString(); } catch {}
+  }}>{children}</a>;
+}

@@ -236,3 +236,42 @@ CREATE TABLE IF NOT EXISTS support_requests (
   status text NOT NULL DEFAULT 'abierta' CHECK (status IN ('abierta','resuelta')), created_at timestamptz NOT NULL DEFAULT now());
 -- Eventos de pago ya procesados (idempotencia de webhooks).
 CREATE TABLE IF NOT EXISTS payment_events (external_id text PRIMARY KEY, agency_id text NOT NULL, type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+
+-- === Modelo de compra directa (LANDING → PAGO → OFICINA AUTOMÁTICA) y múltiples oficinas por cuenta ===
+-- «Oficina IA» = una agencia (inquilino). Una cuenta puede ser miembro de varias; cada una tiene sus propios datos, plan, suscripción y límites.
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'activa';       -- activa | pausada | cancelada
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS business_type text NOT NULL DEFAULT '';
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
+-- Intención de compra: se crea ANTES de pagar (sin cuenta ni agencia). Guarda quién compra y qué configuró; NO da acceso a nada.
+CREATE TABLE IF NOT EXISTS checkout_intents (
+  id text PRIMARY KEY, email text, user_id text REFERENCES users(id) ON DELETE SET NULL, kind text NOT NULL DEFAULT 'primera' CHECK (kind IN ('primera','adicional')),
+  plan text NOT NULL, config jsonb NOT NULL DEFAULT '{}'::jsonb, source text NOT NULL DEFAULT 'directo', utm jsonb NOT NULL DEFAULT '{}'::jsonb,
+  checkout_session_id text UNIQUE, checkout_url text, created_at timestamptz NOT NULL DEFAULT now());
+-- Pedido = pago confirmado por webhook firmado. La clave única del session_id impide duplicados aunque Stripe reenvíe o lleguen eventos en paralelo.
+CREATE TABLE IF NOT EXISTS orders (
+  id text PRIMARY KEY, checkout_session_id text NOT NULL UNIQUE, intent_id text, email text NOT NULL, user_id text REFERENCES users(id) ON DELETE SET NULL,
+  plan text NOT NULL, kind text NOT NULL DEFAULT 'primera', status text NOT NULL DEFAULT 'pagada' CHECK (status IN ('pagada','entregada','error')),
+  stripe_customer_id text, stripe_subscription_id text, amount_total bigint, currency text, source text NOT NULL DEFAULT 'directo',
+  agency_id text REFERENCES agencies(id) ON DELETE SET NULL, last_error text, created_at timestamptz NOT NULL DEFAULT now(), delivered_at timestamptz);
+-- Derecho de crear UNA oficina. Nace de un pago (source='pago') o de una cortesía del operador. Es la ÚNICA vía para crear oficinas de compradores.
+CREATE TABLE IF NOT EXISTS office_rights (
+  id text PRIMARY KEY, user_id text REFERENCES users(id) ON DELETE CASCADE, email text NOT NULL, plan text NOT NULL, source text NOT NULL CHECK (source IN ('pago','cortesia')),
+  order_id text UNIQUE, agency_id text REFERENCES agencies(id) ON DELETE SET NULL, created_at timestamptz NOT NULL DEFAULT now(), used_at timestamptz);
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id text PRIMARY KEY, agency_id text REFERENCES agencies(id) ON DELETE SET NULL, customer_id text, status text NOT NULL DEFAULT 'active',
+  cancel_at_period_end boolean NOT NULL DEFAULT false, current_period_end timestamptz, last_event_created bigint NOT NULL DEFAULT 0, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS invoices (
+  id text PRIMARY KEY, subscription_id text, agency_id text REFERENCES agencies(id) ON DELETE SET NULL, amount_paid bigint NOT NULL DEFAULT 0, currency text,
+  status text NOT NULL DEFAULT 'paid', hosted_invoice_url text, period_end timestamptz, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS invoices_sub_idx ON invoices(subscription_id);
+-- Enlaces de acceso de un solo uso (sustituyen al registro y a la contraseña olvidada). Solo se guarda el hash.
+CREATE TABLE IF NOT EXISTS access_links (
+  token_hash text PRIMARY KEY, user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE, purpose text NOT NULL DEFAULT 'acceso',
+  expires_at timestamptz NOT NULL, used_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS access_links_user_idx ON access_links(user_id, created_at);
+-- Cola de correos transaccionales. El enlace de acceso se genera AL ENVIAR (no se guarda en claro).
+CREATE TABLE IF NOT EXISTS emails (
+  id text PRIMARY KEY, to_email text NOT NULL, kind text NOT NULL, payload jsonb NOT NULL DEFAULT '{}'::jsonb, status text NOT NULL DEFAULT 'en_cola' CHECK (status IN ('en_cola','enviado','error')),
+  attempts int NOT NULL DEFAULT 0, retry_at timestamptz NOT NULL DEFAULT now(), last_error text, dedupe_key text UNIQUE, provider_id text, created_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz);
+CREATE TABLE IF NOT EXISTS system_checks (name text PRIMARY KEY, ok boolean NOT NULL, detail text NOT NULL DEFAULT '', checked_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS ad_spend (id text PRIMARY KEY, day date NOT NULL, source text NOT NULL DEFAULT 'meta', amount_mxn numeric NOT NULL CHECK (amount_mxn >= 0), note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());

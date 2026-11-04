@@ -16,6 +16,10 @@ export function preflight(env: NodeJS.ProcessEnv = process.env): Check[] {
   /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(env.NEXT_PUBLIC_CONTACT_EMAIL ?? "") ? add("OK", "NEXT_PUBLIC_CONTACT_EMAIL", "correo de contacto para privacidad") : add("FALTA", "NEXT_PUBLIC_CONTACT_EMAIL", "la política de privacidad lo necesita (se fija ANTES de compilar)");
   if (env.ANTHROPIC_API_KEY) (Number(env.MODEL_INPUT_USD_PER_MTOK) > 0 && Number(env.MODEL_OUTPUT_USD_PER_MTOK) > 0) ? add("OK", "Claude", "clave y tarifas definidas") : add("FALTA", "Claude", "hay clave pero faltan MODEL_INPUT_USD_PER_MTOK / MODEL_OUTPUT_USD_PER_MTOK");
   else add("AVISO", "Claude", "sin ANTHROPIC_API_KEY: los empleados NO ejecutan tareas reales");
+  env.PUBLIC_SIGNUP === "true" ? add("AVISO", "PUBLIC_SIGNUP", "el registro público está ABIERTO (el modelo de venta lo mantiene cerrado)") : add("OK", "PUBLIC_SIGNUP", "registro público cerrado (las cuentas nacen al comprar)");
+  (env.RESEND_API_KEY && env.MAIL_FROM) ? add("OK", "Correo", "proveedor y remitente definidos") : add("AVISO", "Correo", "sin RESEND_API_KEY/MAIL_FROM: el comprador no recibiría su acceso; la tienda NO abre");
+  if (env.BILLING_ENABLED === "true" && !(env.RESEND_API_KEY && env.MAIL_FROM)) add("FALTA", "COBROS+CORREO", "no se puede cobrar sin poder enviar el correo de acceso");
+  if (env.BILLING_ENABLED === "true" && !env.ANTHROPIC_API_KEY) add("FALTA", "COBROS+IA", "no se puede cobrar sin la clave de IA (y verificarla: npm run ai:verify)");
   if (env.BILLING_ENABLED === "true") add("AVISO", "COBROS", "BILLING_ENABLED=true: solo debe estarlo con autorización de José");
   else add("OK", "COBROS", "apagados");
   if (env.STRIPE_SECRET_KEY && !env.STRIPE_SECRET_KEY.startsWith("sk_test_")) add(env.STRIPE_ALLOW_LIVE === "yes" ? "AVISO" : "FALTA", "STRIPE", "la clave NO es de pruebas");

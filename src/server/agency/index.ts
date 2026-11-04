@@ -15,7 +15,7 @@ const aud = (db: Db, a: AgencyActor, action: string, target?: string, detail: Re
 // ---------- Agencia e identidad ----------
 export async function getAgency(db: Db, a: AgencyActor): Promise<Row> {
   assertAgencyCan(a, "agency:read");
-  const r = (await db.query("SELECT id,name,specialty,brand,plan,monthly_budget_usd::float budget FROM agencies WHERE id=$1", [a.agencyId]))[0];
+  const r = (await db.query("SELECT id,name,specialty,brand,plan,business_type,monthly_budget_usd::float budget FROM agencies WHERE id=$1", [a.agencyId]))[0];
   return { ...r, planInfo: planOf(r.plan) };
 }
 

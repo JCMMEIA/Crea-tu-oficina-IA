@@ -11,6 +11,9 @@ export const SERVICE_CARDS: ServiceCard[] = [
   { id: "contenido", icon: "🎬", title: "Crear contenido", plain: "Pensar publicaciones, guiones y calendarios para las redes.", example: "«Dame ideas de publicaciones para una semana».", employees: ["estratega-contenido", "guionista-storytelling", "director-creativo"], suggestedPriceUsd: 250 },
   { id: "atencion", icon: "🎧", title: "Atender clientes", plain: "Dar seguimiento después de una compra y resolver quejas con amabilidad.", example: "«Escribe un mensaje para agradecer una compra».", employees: ["agente-soporte", "seguimiento-posventa", "analista-satisfaccion"], suggestedPriceUsd: 200 },
 ];
+/** Valores predeterminados: qué tarjetas se marcan según el tipo de negocio (el comprador solo confirma). */
+export const INDUSTRY_SERVICES: Record<string, string[]> = { ecommerce: ["anuncios", "contenido", "inventarios"], "servicios-locales": ["mensajes", "atencion"], inmobiliaria: ["ventas", "mensajes"], "marca-personal": ["contenido", "anuncios"], "finanzas-pyme": ["ventas", "tareas"] };
+export const industryDefaults = (k: string) => INDUSTRY_SERVICES[k] ?? ["anuncios"];
 export const getCard = (id: string) => SERVICE_CARDS.find((c) => c.id === id);
 
 /** Explicación en 4 frases cotidianas: qué hace, para qué sirve, qué necesita y qué entrega. */

@@ -4,6 +4,7 @@ import { actAs, AgencyActor, assertAgencyCan, audit } from "../auth";
 import { createService, getAgency, updateBrand } from "../agency";
 import { hireFromTemplate } from "../catalog/office";
 import { getTemplate } from "../catalog/data";
+import { getIndustry } from "../agency/industries";
 import { SERVICE_CARDS, getCard } from "../guide/services";
 import { practiceExample, practiceInstruction, DEMO_LABEL } from "../guide/practice";
 import { createTask, runWorkflow } from "../tasks";
@@ -27,6 +28,10 @@ export async function setStep(db: Db, a: AgencyActor, step: number) { assertAgen
 export async function finish(db: Db, a: AgencyActor) { assertAgencyCan(a, "agency:read"); await patch(db, a, { done: true }); await audit(db, { userId: a.userId }, "onboarding.done", a.agencyId); }
 
 /** Paso 1: nombre (se puede cambiar después). */
+export async function saveBusinessType(db: Db, a: AgencyActor, type: string) {
+  assertAgencyCan(a, "agency:brand");
+  const t = getIndustry(type) ? type : ""; await db.query("UPDATE agencies SET business_type=$2 WHERE id=$1", [a.agencyId, t]);
+}
 export async function saveName(db: Db, a: AgencyActor, name: string) {
   assertAgencyCan(a, "agency:brand");
   const n = z.string().trim().min(1, "Escribe un nombre para tu negocio.").max(120).parse(name);

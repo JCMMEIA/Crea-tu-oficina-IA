@@ -17,6 +17,13 @@ export interface PaymentProvider {
   createCheckout(i: { agencyId: string; plan: PlanKey; successUrl: string; cancelUrl: string }): Promise<{ url: string }>;
   /** Valida firma del webhook y devuelve el evento normalizado; debe lanzar si la firma es inválida. */
   parseWebhook(rawBody: string, headers: Record<string, string>): Promise<{ type: "paid" | "cancelled"; agencyId: string; plan: PlanKey; externalId: string }>;
+  // --- Compra directa (sin cuenta previa) y ciclo de vida de la suscripción. Opcionales: un proveedor sin ellas solo sirve para el flujo antiguo. ---
+  /** Valida la firma del webhook; lanza si es inválida. */
+  verify?(rawBody: string, headers: Record<string, string>): void;
+  createPublicCheckout?(i: { intentId: string; plan: PlanKey; email?: string; successUrl: string; cancelUrl: string }): Promise<{ url: string; sessionId: string }>;
+  portal?(customerId: string, returnUrl: string): Promise<{ url: string }>;
+  setCancelAtPeriodEnd?(subscriptionId: string, on: boolean): Promise<void>;
+  pauseCollection?(subscriptionId: string, on: boolean): Promise<void>;
 }
 let provider: PaymentProvider | null = null; // registrado a mano (pruebas)
 export const registerPaymentProvider = (p: PaymentProvider | null) => { provider = p; };
@@ -26,6 +33,7 @@ function activeProvider(): PaymentProvider | null {
   if (provider) return provider;
   return stripeProviderFromEnv();
 }
+export const getPaymentProvider = () => activeProvider();
 export const billingEnabled = () => activeProvider() !== null;
 export const billingStatus = () => ({ enabled: billingEnabled(), flag: process.env.BILLING_ENABLED === "true", provider: activeProvider()?.name ?? null });
 
@@ -52,6 +60,16 @@ export async function startCheckout(db: Db, a: AgencyActor, plan: string, urls =
 export async function handlePaymentWebhook(db: Db, rawBody: string, headers: Record<string, string>) {
   const provider = activeProvider();
   if (!provider) throw new Error("Cobros desactivados: no se acepta ningún evento de pago.");
+  if (provider.verify) {
+    provider.verify(rawBody, headers); // firma inválida → lanza (el webhook responde 400)
+    const parsed = JSON.parse(rawBody); const md = parsed?.data?.object?.metadata ?? {};
+    if (!(md.agency_id && !md.intent_id)) {
+      const fresh0 = await db.query("INSERT INTO payment_events(external_id,agency_id,type) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING external_id", [String(parsed.id), "-", String(parsed.type)]);
+      if (!fresh0.length) return "repetido" as const;
+      const { applyCommerceEvent } = await import("../commerce/events");
+      return (await applyCommerceEvent(db, parsed)) as "procesado" | "ignorado";
+    }
+  }
   let ev; try { ev = await provider.parseWebhook(rawBody, headers); } catch (e: any) { if (e?.message === "IGNORE") return "ignorado" as const; throw e; }
   // Idempotencia: Stripe reenvía eventos; cada id se procesa una sola vez.
   const fresh = await db.query("INSERT INTO payment_events(external_id,agency_id,type) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING external_id", [ev.externalId, ev.agencyId, ev.type]);

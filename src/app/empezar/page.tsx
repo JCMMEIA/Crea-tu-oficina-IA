@@ -3,7 +3,8 @@ import { requireAgency } from "@/lib/session";
 import { Flash, Steps, Tip, Help } from "@/lib/ui";
 import { STEPS, getOnboarding, ensureDemoOffice } from "@/server/onboarding";
 import { getAgency } from "@/server/agency";
-import { SERVICE_CARDS, employeesForServices } from "@/server/guide/services";
+import { SERVICE_CARDS, employeesForServices, industryDefaults } from "@/server/guide/services";
+import { INDUSTRIES } from "@/server/agency/industries";
 import { getTemplate } from "@/server/catalog/data";
 import { companyScene } from "@/server/office3d";
 import { actAs } from "@/server/auth";
@@ -34,10 +35,12 @@ export default async function Empezar({ searchParams }: { searchParams: Promise<
     {paso === 1 && <form action={nameStep}><h1>¿Cómo se llamará tu negocio?</h1><p className="lead">Elige el nombre que verán tus clientes. Podrás cambiarlo cuando quieras.</p>
       <label htmlFor="name">Nombre de tu negocio</label><Help>Por ejemplo: «Estudio Nova» o «Marketing con Ana».</Help>
       <input id="name" name="name" defaultValue={ag.name} required maxLength={120} style={{ fontSize: "1.2rem" }} autoFocus />
+      <label htmlFor="biz">¿A qué se dedica tu negocio?</label><Help>Con esto te sugerimos la plantilla, los servicios y los empleados. Puedes cambiarlos después.</Help>
+      <select id="biz" name="negocio" defaultValue={ag.business_type ?? ""} data-testid="wizard-negocio"><option value="">Prefiero elegir yo mismo después</option>{INDUSTRIES.map((i) => <option key={i.key} value={i.key}>{i.name}</option>)}</select>
       <p><button className="big" data-testid="next">Siguiente →</button></p></form>}
 
     {paso === 2 && <form action={servicesStep}><h1>¿Qué quieres ofrecer a otras empresas?</h1><p className="lead">Toca las tarjetas que te interesen. Puedes elegir varias.</p>
-      <div className="pick">{SERVICE_CARDS.map((c) => <label className="card" key={c.id}><input type="checkbox" name="servicio" value={c.id} defaultChecked={ob.services.includes(c.id)} data-testid={`servicio-${c.id}`} /><span className="ic" aria-hidden="true">{c.icon}</span><b>{c.title}</b><span className="muted">{c.plain}</span><span className="muted" style={{ fontSize: ".85rem" }}>Ejemplo: {c.example}</span></label>)}</div>
+      <div className="pick">{SERVICE_CARDS.map((c) => <label className="card" key={c.id}><input type="checkbox" name="servicio" value={c.id} defaultChecked={(ob.services.length ? ob.services : ag.business_type ? industryDefaults(ag.business_type) : []).includes(c.id)} data-testid={`servicio-${c.id}`} /><span className="ic" aria-hidden="true">{c.icon}</span><b>{c.title}</b><span className="muted">{c.plain}</span><span className="muted" style={{ fontSize: ".85rem" }}>Ejemplo: {c.example}</span></label>)}</div>
       <Tip>Elegir no cuesta nada ni publica nada: solo prepara tu lista de servicios.</Tip>
       <p className="row"><Link className="btn ghost" href="/empezar?paso=1">← Atrás</Link><button className="big" data-testid="next">Siguiente →</button></p></form>}
 

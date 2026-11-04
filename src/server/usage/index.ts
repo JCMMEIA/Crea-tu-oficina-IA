@@ -18,7 +18,8 @@ export async function assertWithinLimits(db: Db, a: { companyId: string; employe
   if (spent + a.maxCostUsd > Number(c.monthly_budget_usd))
     throw new LimitError(`Presupuesto mensual de IA agotado (gastado ${spent.toFixed(4)} de ${Number(c.monthly_budget_usd).toFixed(2)} USD).`, "budget");
   // Tope de la agencia: suma de todos sus clientes en el mes.
-  const ag = (await db.query(`SELECT a.id, a.monthly_budget_usd FROM agencies a JOIN companies c ON c.agency_id=a.id WHERE c.id=$1`, [a.companyId]))[0];
+  const ag = (await db.query(`SELECT a.id, a.monthly_budget_usd, a.status FROM agencies a JOIN companies c ON c.agency_id=a.id WHERE c.id=$1`, [a.companyId]))[0];
+  if (ag && ag.status !== "activa") throw new LimitError(ag.status === "pausada" ? "Esta oficina está pausada: reanúdala desde «Mis oficinas» para que sus empleados vuelvan a trabajar." : "Esta oficina está cancelada: sus empleados ya no trabajan (tus datos se conservan).", "office_status");
   if (ag) {
     const s = await db.query<{ s: string }>("SELECT coalesce(sum(u.cost_usd),0) s FROM usage_events u JOIN companies c ON c.id=u.company_id WHERE c.agency_id=$1 AND u.created_at >= date_trunc('month', now())", [ag.id]);
     if (Number(s[0].s) + a.maxCostUsd > Number(ag.monthly_budget_usd)) throw new LimitError("Presupuesto mensual de IA de la agencia agotado.", "agency_budget");

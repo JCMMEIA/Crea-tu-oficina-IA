@@ -10,12 +10,14 @@ export const TUTORIALS: Tutorial[] = [
 ];
 export const FAQ: [string, string][] = [
   ["¿Necesito saber programar?", "No. Todo se hace con tarjetas y formularios sencillos."],
-  ["¿Cuánto cuesta?", "Hoy no se cobra nada. Los planes y sus límites están en la página de planes; los precios y la compra se abrirán más adelante y te avisaremos antes."],
-  ["¿Puedo comprar ya?", "Todavía no. Puedes pedir un plan y el equipo te contactará, pero no se hace ningún cobro."],
+  ["¿Cuánto cuesta?", "El precio vigente de la oficina IA está en la página principal, en la sección «Tu oficina IA». Es una suscripción mensual; cada oficina adicional tiene la suya."],
+  ["¿Cómo compro?", "Desde la página principal con «Crear mi oficina IA». Pagas, recibes un correo con tu acceso y tu oficina se crea sola; no necesitas registrarte antes. Para otra oficina, usa «NUEVA OFICINA IA» en tu panel."],
   ["¿Y si la inteligencia artificial no está activada?", "Verás ejemplos ilustrativos claramente marcados. No son trabajo real. Cuando se active, los empleados trabajan de verdad."],
   ["¿Mis clientes ven los datos de otros?", "No. Cada cliente tiene una oficina separada y otras agencias no ven la tuya."],
   ["¿Se envía o publica algo sin mi permiso?", "No. Publicar, enviar mensajes o gastar dinero siempre espera tu aprobación."],
   ["¿Puedo usar mi propia marca?", "Sí: nombre, color y logo en «Mi marca». Es marca blanca."],
-  ["¿Puedo cancelar?", "Todavía no hay cobros, así que no hay nada que cancelar. Las condiciones de cancelación y renovación se publicarán antes de abrir las ventas."],
+  ["¿Puedo cancelar o pausar?", "Sí, en «Mis oficinas»: cancelas una oficina al final del periodo pagado, o la pausas, sin afectar las demás. Tus datos se conservan."],
+  ["No me llegó el correo de acceso", "Revisa «Spam» y pide otro enlace en «Recuperar mi acceso» con el correo que usaste al pagar. El enlace vale 30 minutos y se usa una sola vez."],
+  ["¿Dónde veo mis comprobantes?", "En «Mi plan» de cada oficina, o con «Pagos y comprobantes» en «Mis oficinas» (administras tu forma de pago ahí)."],
   ["¿Quién me ayuda si me atoro?", "Pulsa ❓ Ayuda para la guía en pantalla, o escríbenos desde «Hablar con una persona»: una persona te responde por correo."],
 ];

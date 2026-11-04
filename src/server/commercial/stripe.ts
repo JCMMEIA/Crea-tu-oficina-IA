@@ -22,8 +22,28 @@ export function verifyStripeSignature(raw: string, header: string, secret: strin
 export function stripeProviderFromEnv(): PaymentProvider | null {
   const key = process.env.STRIPE_SECRET_KEY, whsec = process.env.STRIPE_WEBHOOK_SECRET;
   if (!stripeKeyOk(key) || !whsec) return null;
+  const call = async (method: string, path: string, params?: Record<string, string>) => {
+    const r = await fetch(`${stripeBase()}${path}`, { method, headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/x-www-form-urlencoded" }, ...(params ? { body: new URLSearchParams(params) } : {}) });
+    const j: any = await r.json().catch(() => ({})); if (!r.ok) throw new Error(`Stripe rechazó la operación (${r.status})`); return j;
+  };
   return {
     name: key.startsWith("sk_test_") ? "stripe (modo pruebas)" : "stripe (REAL)",
+    verify(raw, headers) { if (!verifyStripeSignature(raw, headers["stripe-signature"] ?? "", whsec)) throw new Error("Firma de pago inválida."); },
+    async createPublicCheckout({ intentId, plan, email, successUrl, cancelUrl }) {
+      const price = planPriceInfo(plan); if (!price || price.currency !== "MXN") throw new Error("Falta el precio del plan en pesos (PLAN_PRICE_MXN_…).");
+      const f: Record<string, string> = {
+        mode: "subscription", success_url: successUrl, cancel_url: cancelUrl, client_reference_id: intentId, locale: "es",
+        "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "mxn", "line_items[0][price_data][unit_amount]": String(Math.round(price.amount * 100)),
+        "line_items[0][price_data][recurring][interval]": "month", "line_items[0][price_data][product_data][name]": `Crea tu Oficina IA — plan ${PLANS[plan].label}`,
+        "metadata[intent_id]": intentId, "metadata[plan]": plan, "subscription_data[metadata][intent_id]": intentId, "subscription_data[metadata][plan]": plan,
+      };
+      if (email) f.customer_email = email;
+      const j = await call("POST", "/v1/checkout/sessions", f); if (typeof j.url !== "string" || typeof j.id !== "string") throw new Error("No se pudo abrir el pago. Inténtalo más tarde.");
+      return { url: j.url, sessionId: j.id };
+    },
+    async portal(customerId, returnUrl) { const j = await call("POST", "/v1/billing_portal/sessions", { customer: customerId, return_url: returnUrl }); if (typeof j.url !== "string") throw new Error("No se pudo abrir el portal de pagos."); return { url: j.url }; },
+    async setCancelAtPeriodEnd(id, on) { await call("POST", `/v1/subscriptions/${encodeURIComponent(id)}`, { cancel_at_period_end: String(on) }); },
+    async pauseCollection(id, on) { await call("POST", `/v1/subscriptions/${encodeURIComponent(id)}`, on ? { "pause_collection[behavior]": "void" } : { pause_collection: "" }); },
     async createCheckout({ agencyId, plan, successUrl, cancelUrl }) {
       const price = planPriceInfo(plan);
       if (!price || price.currency !== "MXN") throw new Error("Falta el precio del plan en pesos (PLAN_PRICE_MXN_…).");

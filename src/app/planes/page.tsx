@@ -8,7 +8,7 @@ export const metadata = { title: "Planes — Crea tu Oficina IA", description: "
 export const dynamic = "force-dynamic";
 export default async function Planes() {
   const { actor, agency } = await currentActor(); const buy = billingEnabled();
-  const cta = (k: string) => agency ? <Link className="btn" href={`/agencia/plan?plan=${k}`}>Elegir este plan</Link> : <CtaLink className="btn" href={`/registro?plan=${k}`} cta={`plan-${k}`}>Empezar con este plan</CtaLink>;
+  const cta = (k: string) => agency ? <Link className="btn" href={`/agencia/plan?plan=${k}`}>Elegir este plan</Link> : <CtaLink className="btn" href="/#oferta" cta={`plan-${k}`}>Ver la oferta</CtaLink>;
   void actor;
   return (<div className="land"><Attribution track="plan_visto" />
     <header><b>🏛️ Crea tu Oficina IA</b><span className="row"><Link href="/">Inicio</Link><Link href="/demo">Pedir demostración</Link></span></header>
@@ -18,7 +18,7 @@ export default async function Planes() {
       <div className="card" key={k} data-testid={`plan-${k}`}><h3>{p.label}</h3><p className="muted">{PLAN_BLURB[k]}</p>
         <p style={{ fontSize: "1.3rem", margin: "6px 0" }}><b>{k === "prueba" ? "Gratis" : formatPrice(pr)}</b></p>
         <ul><li>Hasta <b>{p.maxClients}</b> clientes</li><li>Hasta <b>{p.maxEmployees}</b> empleados digitales</li><li>Oficina 3D, aprobaciones y tu marca</li></ul>
-        {k === "prueba" ? <CtaLink className="btn" href="/registro" cta="plan-prueba">Crear cuenta de prueba</CtaLink> : cta(k)}
+        {k === "prueba" ? <CtaLink className="btn" href="/#oferta" cta="plan-prueba">Ver la oferta</CtaLink> : cta(k)}
         {k !== "prueba" && !buy && <p className="muted" style={{ fontSize: ".85rem" }}>Hoy solo puedes pedir que te avisemos: no se hace ningún cobro.</p>}</div>); })}</div>
     <section><h2>Lo que debes saber antes de contratar</h2><ul>
       <li><b>El uso de inteligencia artificial tiene un costo aparte</b> cuando se activa; puedes ponerle un tope mensual a cada cliente.</li>

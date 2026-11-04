@@ -35,6 +35,7 @@ async function attempt<T>(path: string, fn: () => Promise<T>): Promise<T> {
 }
 
 export async function agencySignupAction(f: FormData) {
+  if (process.env.PUBLIC_SIGNUP !== "true") return redirect("/registro");
   const db = await getDb();
   try {
     await signupAgency(db, { email: s(f, "email"), name: s(f, "name"), password: s(f, "password"), agencyName: s(f, "agencyName"), specialty: s(f, "specialty"), source: s(f, "source"), planInterest: s(f, "plan") });

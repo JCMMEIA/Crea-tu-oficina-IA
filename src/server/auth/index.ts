@@ -93,9 +93,20 @@ export async function login(db: Db, emailRaw: string, password: string): Promise
     : (verifyPassword(password, "scrypt$00$00"), false); // trabajo equivalente
   await db.query("INSERT INTO login_attempts(email,ok) VALUES($1,$2)", [email, ok]);
   if (!ok) throw new Error("Correo o contraseña incorrectos.");
+  return startSession(db, rows[0].id);
+}
+/** Crea una sesión para un usuario ya verificado (contraseña o enlace de acceso de un solo uso). Devuelve el token (solo se guarda su hash). */
+export async function startSession(db: Db, userId: string): Promise<string> {
   const token = randomBytes(32).toString("hex");
-  await db.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2, now() + ($3 || ' days')::interval)", [sha(token), rows[0].id, String(SESSION_DAYS)]);
+  await db.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2, now() + ($3 || ' days')::interval)", [sha(token), userId, String(SESSION_DAYS)]);
   return token;
+}
+/** Usuario SIN contraseña (comprador): solo entra con enlace de acceso. La «contraseña» es aleatoria e inutilizable. No pasa por la lista de registro cerrado: pagó. */
+export async function createPasswordlessUser(t: Db, email: string, name: string): Promise<string> {
+  const e = email.trim().toLowerCase(); const ex = await t.query("SELECT id FROM users WHERE email=$1", [e]); if (ex.length) return ex[0].id;
+  const id = newId(); const n = (name || e.split("@")[0]).trim().slice(0, 120) || "Cliente";
+  await t.query("INSERT INTO users(id,email,name,password_hash) VALUES($1,$2,$3,$4)", [id, e, n, hashPassword(randomBytes(32).toString("hex"))]);
+  return id;
 }
 
 export async function logout(db: Db, token: string) { await db.query("DELETE FROM sessions WHERE token_hash=$1", [sha(token)]); }
@@ -108,10 +119,11 @@ export async function sessionUser(db: Db, token: string | undefined) {
 }
 
 /** Actor a nivel agencia (o null). */
-export async function agencyActorFromToken(db: Db, token: string | undefined): Promise<AgencyActor | null> {
+export async function agencyActorFromToken(db: Db, token: string | undefined, officeId?: string): Promise<AgencyActor | null> {
   const u = await sessionUser(db, token);
   if (!u) return null;
-  const r = await db.query<{ agency_id: string; role: AgencyRole }>("SELECT agency_id, role FROM agency_members WHERE user_id=$1 ORDER BY agency_id LIMIT 1", [u.userId]);
+  // Una cuenta puede tener VARIAS oficinas. `officeId` (cookie) solo es una preferencia: si no es miembro de esa oficina se ignora y se usa la primera suya.
+  const r = await db.query<{ agency_id: string; role: AgencyRole }>("SELECT agency_id, role FROM agency_members WHERE user_id=$1 ORDER BY (agency_id = $2) DESC, agency_id LIMIT 1", [u.userId, officeId ?? ""]);
   return r[0] ? { ...u, agencyId: r[0].agency_id, agencyRole: r[0].role } : null;
 }
 
@@ -135,7 +147,8 @@ export async function actorFromToken(db: Db, token: string | undefined, companyI
       WHERE m.user_id=$1 AND ($2::text IS NULL OR m.company_id=$2) ORDER BY m.company_id LIMIT 1`, [u.userId, companyId ?? null]);
   if (direct[0]) return { ...u, companyId: direct[0].company_id, role: direct[0].role, agencyId: direct[0].agency_id };
   if (!companyId) return null;
-  const ag = await agencyActorFromToken(db, token);
-  if (!ag) return null;
-  try { return await actAs(db, ag, companyId); } catch { return null; }
+  const own = await db.query<{ agency_id: string; role: AgencyRole }>(
+    "SELECT am.agency_id, am.role FROM agency_members am JOIN companies c ON c.agency_id=am.agency_id WHERE am.user_id=$1 AND c.id=$2", [u.userId, companyId]);
+  if (!own[0]) return null; // la empresa no pertenece a NINGUNA oficina de este usuario
+  try { return await actAs(db, { ...u, agencyId: own[0].agency_id, agencyRole: own[0].role }, companyId); } catch { return null; }
 }

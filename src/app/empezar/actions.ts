@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAgency } from "@/lib/session";
-import { chooseServices, finish, hireInDemo, runPractice, saveIdentity, saveName, setStep, ensureDemoOffice } from "@/server/onboarding";
+import { chooseServices, finish, hireInDemo, runPractice, saveBusinessType, saveIdentity, saveName, setStep, ensureDemoOffice } from "@/server/onboarding";
 import { getProvider } from "@/server/models";
 import { getAdapter } from "@/server/connectors";
 
@@ -13,7 +13,7 @@ async function step<T>(n: number, fn: () => Promise<T>): Promise<T> {
   try { return await fn(); } catch (e: any) { if (e?.digest?.startsWith?.("NEXT_REDIRECT")) throw e; return stay(n, e?.name === "ZodError" ? "Revisa lo que escribiste." : e?.message ?? "Algo salió mal."); }
 }
 
-export async function nameStep(f: FormData) { const { db, agency } = await requireAgency(); await step(1, () => saveName(db, agency, s(f, "name"))); revalidatePath("/", "layout"); go(2); }
+export async function nameStep(f: FormData) { const { db, agency } = await requireAgency(); await step(1, async () => { await saveName(db, agency, s(f, "name")); await saveBusinessType(db, agency, s(f, "negocio")); }); revalidatePath("/", "layout"); go(2); }
 export async function servicesStep(f: FormData) { const { db, agency } = await requireAgency(); await step(2, () => chooseServices(db, agency, f.getAll("servicio").map(String))); go(3); }
 export async function employeesStep(f: FormData) {
   const { db, agency } = await requireAgency();
