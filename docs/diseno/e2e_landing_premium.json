@@ -1,0 +1,265 @@
+{
+ "fecha": "2026-11-04T03:37:09.662Z",
+ "resultados": [
+  {
+   "m": "hero: título exacto pedido",
+   "ok": true
+  },
+  {
+   "m": "hero: descripción exacta pedida",
+   "ok": true
+  },
+  {
+   "m": "botón «Ver panel por dentro» → demostración interactiva",
+   "ok": true
+  },
+  {
+   "m": "header: Ayuda, Iniciar sesión y botón principal",
+   "ok": true
+  },
+  {
+   "m": "laptop del hero muestra la captura REAL del panel (imagen cargada)",
+   "ok": true
+  },
+  {
+   "m": "las 9 secciones están en el orden pedido, apiladas con scroll vertical",
+   "ok": true
+  },
+  {
+   "m": "la página es larga (scroll vertical real), no una sola pantalla",
+   "ok": true
+  },
+  {
+   "m": "header fijo al hacer scroll (top=0px, alto=65px)",
+   "ok": true
+  },
+  {
+   "m": "TESTIMONIOS: la sección está oculta mientras no existan testimonios reales (no se inventa nada)",
+   "ok": true
+  },
+  {
+   "m": "no hay estrellas, porcentajes de éxito ni personas ficticias",
+   "ok": true
+  },
+  {
+   "m": "la landing no usa emojis como iconos",
+   "ok": true
+  },
+  {
+   "m": "accesibilidad (axe, WCAG 2.1 AA) en landing (escritorio): 0 graves/críticas",
+   "ok": true
+  },
+  {
+   "m": "«Iniciar sesión» lleva al acceso por enlace de correo (sin contraseñas)",
+   "ok": true
+  },
+  {
+   "m": "accesibilidad (axe, WCAG 2.1 AA) en iniciar sesión: 0 graves/críticas",
+   "ok": true
+  },
+  {
+   "m": "metadatos del favicon: .ico, .svg, apple-touch-icon y manifest · 4 enlaces",
+   "ok": true
+  },
+  {
+   "m": "/favicon.ico responde (200, 4067 bytes)",
+   "ok": true
+  },
+  {
+   "m": "/icon.svg responde (200, 681 bytes)",
+   "ok": true
+  },
+  {
+   "m": "/apple-icon.png responde (200, 15060 bytes)",
+   "ok": true
+  },
+  {
+   "m": "/manifest.webmanifest responde (200, 468 bytes)",
+   "ok": true
+  },
+  {
+   "m": "/icons/icon-192.png responde (200, 18662 bytes)",
+   "ok": true
+  },
+  {
+   "m": "/icons/icon-maskable-512.png responde (200, 46421 bytes)",
+   "ok": true
+  },
+  {
+   "m": "manifest con iconos (192, 512, maskable) y color del tema",
+   "ok": true
+  },
+  {
+   "m": "color de tema del navegador móvil",
+   "ok": true
+  },
+  {
+   "m": "SEO: un solo h1, lang=es, título y descripción",
+   "ok": true
+  },
+  {
+   "m": "rendimiento escritorio: LCP 668 ms (<2500), CLS 0.000 (<0.1), 154 KB transferidos en la primera carga",
+   "ok": true
+  },
+  {
+   "m": "rendimiento móvil: LCP 416 ms (<2500), CLS 0.000 (<0.1), 182 KB transferidos en la primera carga",
+   "ok": true
+  },
+  {
+   "m": "demo/inicio: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo/nueva-oficina: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo/mis-oficinas: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo/empleados: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo/departamentos: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo/automatizaciones: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo/configuracion: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo/facturacion: banner de ejemplo y navegación activa",
+   "ok": true
+  },
+  {
+   "m": "demo «Nueva oficina IA»: al elegir negocio propone empleados por departamento (catálogo real)",
+   "ok": true
+  },
+  {
+   "m": "el botón final de la demo NO hace nada (sin pagos ni envíos)",
+   "ok": true
+  },
+  {
+   "m": "la demostración no envió ninguna petición de escritura",
+   "ok": true
+  },
+  {
+   "m": "accesibilidad (axe, WCAG 2.1 AA) en demo/inicio: 0 graves/críticas",
+   "ok": true
+  },
+  {
+   "m": "accesibilidad (axe, WCAG 2.1 AA) en demo/nueva-oficina: 0 graves/críticas",
+   "ok": true
+  },
+  {
+   "m": "la demo no contiene correos ni datos reales",
+   "ok": true
+  },
+  {
+   "m": "móvil /: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /recuperar: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /panel-demo/inicio: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /panel-demo/nueva-oficina: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /panel-demo/mis-oficinas: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /panel-demo/empleados: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /panel-demo/facturacion: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /ayuda/tutoriales: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil /privacidad: sin desplazamiento horizontal (0px)",
+   "ok": true
+  },
+  {
+   "m": "móvil: la navegación se reemplaza por el botón de menú",
+   "ok": true
+  },
+  {
+   "m": "móvil: botón de menú táctil (44×44)",
+   "ok": true
+  },
+  {
+   "m": "menú móvil funcional: se abre y muestra «Iniciar sesión»",
+   "ok": true
+  },
+  {
+   "m": "menú móvil: «Iniciar sesión» navega",
+   "ok": true
+  },
+  {
+   "m": "móvil: texto legible (17.6px)",
+   "ok": true
+  },
+  {
+   "m": "móvil: botones cómodos (358×56)",
+   "ok": true
+  },
+  {
+   "m": "móvil, panel: el menú lateral empieza cerrado",
+   "ok": true
+  },
+  {
+   "m": "móvil, panel: el botón «Abrir el menú» despliega la navegación",
+   "ok": true
+  },
+  {
+   "m": "móvil, panel: navegar entre vistas funciona",
+   "ok": true
+  },
+  {
+   "m": "accesibilidad (axe, WCAG 2.1 AA) en landing móvil/demo: 0 graves/críticas",
+   "ok": true
+  },
+  {
+   "m": "sin sesión, /oficinas redirige a iniciar sesión (/recuperar)",
+   "ok": true
+  },
+  {
+   "m": "sin sesión, /oficinas/nueva redirige a iniciar sesión (/recuperar)",
+   "ok": true
+  },
+  {
+   "m": "sin sesión, /agencia redirige a iniciar sesión (/recuperar)",
+   "ok": true
+  },
+  {
+   "m": "sin sesión, /admin redirige a iniciar sesión (/recuperar)",
+   "ok": true
+  },
+  {
+   "m": "con la tienda cerrada /comprar no abre ningún pago (vuelve a la lista de espera)",
+   "ok": true
+  },
+  {
+   "m": "0 errores de consola/JavaScript en todo el recorrido",
+   "ok": true
+  }
+ ]
+}
