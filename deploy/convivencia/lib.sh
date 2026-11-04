@@ -52,3 +52,38 @@ listeners() {
   done | sort -n -u
 }
 puerto_ocupado() { listeners | awk -v p="$1" '$1==p{f=1} END{exit !f}'; }
+
+# ---- Análisis de «apt-get -s install» (qué paquetes serían NUEVOS, cuáles se ACTUALIZARÍAN y cuáles se QUITARÍAN) ----
+# Formato real de apt:  nuevo        →  Inst nombre (versión origen [amd64])
+#                       actualiza    →  Inst nombre [versión-instalada] (versión-nueva origen [amd64])
+# La señal de actualización es que el TERCER campo empiece con «[» (la versión vieja pegada al nombre). El «[amd64]» del final aparece en TODAS las líneas
+# y NO significa actualización (esa confusión causó un falso positivo).
+apt_analizar() {  # stdin: salida de apt-get -s. stdout: «nuevos=N actualizados=N quitados=N» y una línea ACTUALIZA:/QUITA: por paquete
+  awk '/^Inst /{ if ($3 ~ /^\[/) { u++; ul[u]=$2 } else n++ } /^Remv /{ r++; rl[r]=$2 }
+       END{ printf "nuevos=%d actualizados=%d quitados=%d\n", n, u, r; for(i=1;i<=u;i++) print "ACTUALIZA: " ul[i]; for(i=1;i<=r;i++) print "QUITA: " rl[i] }'
+}
+# apt_verificar paquetes…  → código: 0 solo instalaciones nuevas · 3 actualizaría paquetes existentes · 4 quitaría paquetes · 5 apt no pudo simular
+apt_verificar() {
+  local sim res
+  sim="$(LC_ALL=C apt-get -s install --no-install-recommends "$@" 2>&1)" || { echo "$sim" | tail -5 | sed 's/^/   /'; return 5; }
+  res="$(echo "$sim" | apt_analizar)"; echo "   apt simulado → $(echo "$res" | head -1)"
+  echo "$res" | grep -E '^(ACTUALIZA|QUITA):' | sed 's/^/   /' || true
+  case "$res" in *"quitados=0"*) :;; *) return 4;; esac
+  case "$res" in *"actualizados=0 "*) return 0;; *) return 3;; esac
+}
+# Qué hacer con el código de apt_verificar: en simulacro solo avisa; al aplicar, DETIENE ante actualizaciones, remociones o fallo de apt.
+apt_decidir() {
+  case "$1" in
+    0) ok "apt solo instalaría paquetes NUEVOS (no toca ninguno existente)";;
+    3) [ "$DRY" = 1 ] && warn "apt ACTUALIZARÍA paquetes ya instalados (lista arriba); al aplicar se detendría." || die "apt actualizaría paquetes ya instalados (podría afectar a OpenClaw). Detenido: revisa la lista.";;
+    4) [ "$DRY" = 1 ] && warn "apt QUITARÍA paquetes (lista arriba); al aplicar se detendría." || die "apt quitaría paquetes. Detenido.";;
+    *) [ "$DRY" = 1 ] && warn "apt no pudo simular la instalación (¿falta 'apt-get update'?); al aplicar se detendría." || die "apt no pudo simular la instalación. Detenido (no se instala a ciegas).";;
+  esac
+}
+# Instala SOLO si apt confirma que todo son paquetes nuevos. Se detiene (al aplicar) ante actualizaciones, remociones o si apt no puede simular.
+paquetes_seguros() {
+  export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l NEEDRESTART_SUSPEND=1   # needrestart SOLO LISTA, nunca reinicia servicios (OpenClaw incluido)
+  [ "$DRY" = 0 ] && apt-get update -y -o DPkg::Lock::Timeout=180 >/dev/null   # actualiza solo el ÍNDICE de paquetes
+  local rc=0; apt_verificar "$@" || rc=$?; apt_decidir "$rc"
+  run apt-get install -y --no-install-recommends -o DPkg::Lock::Timeout=180 "$@"
+}

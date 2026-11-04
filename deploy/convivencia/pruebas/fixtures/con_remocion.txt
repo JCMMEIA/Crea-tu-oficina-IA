@@ -1,0 +1,5 @@
+Inst nginx (1.2.3-1ubuntu1 Ubuntu:24.04/noble-updates [amd64])
+Inst nginx-common (1.2.3-1ubuntu1 Ubuntu:24.04/noble-updates [amd64])
+Inst libnginx-mod-http-geoip2 (1.2.3-1ubuntu1 Ubuntu:24.04/noble-updates [amd64])
+Remv libfoo1 [1.0-1]
+Inst libfoo2 (2.0 Ubuntu:24.04/noble [amd64])

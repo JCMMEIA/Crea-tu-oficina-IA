@@ -30,6 +30,38 @@ s6() { local P pid W=/var/tmp/cvtest; mkdir -p $W
   bajar; unset OPENCLAW_PORT; return 0; }; t s6
 T="esta batería nunca usa el puerto real de OpenClaw ni mata procesos por nombre"
 s6b() { ! sed -n '/^s6() {/,/t s6$/p' pruebas/run_tests.sh | grep -qE 'pkill|killall|18789'; }; t s6b
+# ---------- apt: distinguir paquetes NUEVOS de ACTUALIZACIONES ----------
+FX="$D/pruebas/fixtures"
+T="apt: 24 paquetes nuevos (todos con [amd64]) se reconocen como NUEVOS, 0 actualizaciones (el falso positivo que bloqueó la instalación)"
+a1() { local r; r="$(. ./lib.sh; apt_analizar < "$FX/solo_nuevos.txt")"; echo "$r" | grep -qx "nuevos=24 actualizados=0 quitados=0" && ! echo "$r" | grep -q ACTUALIZA; }; t a1
+T="apt: la expresión ANTIGUA sí daba falso positivo con esos mismos datos (regresión documentada)"; a1b() { [ "$(grep -cE '^Inst .*\[' "$FX/solo_nuevos.txt")" -gt 0 ]; }; t a1b
+T="apt: una actualización real (versión instalada entre corchetes tras el nombre) se detecta y se nombra"
+a2() { local r; r="$(. ./lib.sh; apt_analizar < "$FX/con_actualizacion.txt")"; echo "$r" | grep -q "actualizados=1" && echo "$r" | grep -qx "ACTUALIZA: libssl3t64"; }; t a2
+T="apt: remover paquetes se detecta"; a3() { local r; r="$(. ./lib.sh; apt_analizar < "$FX/con_remocion.txt")"; echo "$r" | grep -q "quitados=1" && echo "$r" | grep -qx "QUITA: libfoo1"; }; t a3
+# apt falso en PATH: responde con un archivo de datos al simular y REGISTRA cualquier otra llamada (para comprobar qué se instalaría de verdad)
+FAKEBIN="$(mktemp -d)"; cat > "$FAKEBIN/apt-get" <<'FAKE'
+#!/usr/bin/env bash
+echo "apt-get $*" >> "${FAKE_APT_LOG:?}"
+case " $* " in *" -s "*) cat "${FAKE_APT_FIXTURE:?}"; grep -q "^E:" "$FAKE_APT_FIXTURE" && exit 100; exit 0;; esac
+exit 0
+FAKE
+chmod +x "$FAKEBIN/apt-get"
+harness() { # fixture modo(DRY 0/1) → ejecuta paquetes_seguros con apt falso; imprime la salida; el código de salida es el del proceso
+  FAKE_APT_LOG="$FAKEBIN/log" FAKE_APT_FIXTURE="$FX/$1.txt" PATH="$FAKEBIN:$PATH" bash -c ". ./lib.sh; DRY=$2; paquetes_seguros nginx postgresql certbot"; }
+T="APLICAR + solo paquetes nuevos: el flujo CONTINÚA (apt-get install se ejecuta con --no-install-recommends)"
+f1() { : > "$FAKEBIN/log"; harness solo_nuevos 0 >/dev/null 2>&1 || return 1; grep -q "^apt-get install -y --no-install-recommends .* nginx postgresql certbot" "$FAKEBIN/log" && grep -q "^apt-get update" "$FAKEBIN/log"; }; t f1
+T="APLICAR + actualización de un paquete existente: se DETIENE y NO instala nada"
+f2() { : > "$FAKEBIN/log"; if harness con_actualizacion 0 >"$FAKEBIN/out" 2>&1; then return 1; fi; ! grep -q "^apt-get install" "$FAKEBIN/log" && grep -q "ACTUALIZA: libssl3t64" "$FAKEBIN/out"; }; t f2
+T="APLICAR + remoción de paquetes: se DETIENE y NO instala nada"; f3() { : > "$FAKEBIN/log"; if harness con_remocion 0 >/dev/null 2>&1; then return 1; fi; ! grep -q "^apt-get install" "$FAKEBIN/log"; }; t f3
+T="APLICAR + apt no puede simular: se DETIENE (no instala a ciegas)"; f4() { : > "$FAKEBIN/log"; if harness apt_falla 0 >/dev/null 2>&1; then return 1; fi; ! grep -q "^apt-get install" "$FAKEBIN/log"; }; t f4
+T="SIMULACRO: nunca ejecuta apt-get install ni apt-get update (solo simula), ni con actualizaciones"
+f5() { : > "$FAKEBIN/log"; harness solo_nuevos 1 >/dev/null 2>&1 && harness con_actualizacion 1 >"$FAKEBIN/out" 2>&1 || return 1; ! grep -qE "^apt-get (install -y|update)" "$FAKEBIN/log" && grep -q "ACTUALIZARÍA" "$FAKEBIN/out"; }; t f5
+T="instalador completo en simulacro: con paquetes nuevos no avisa de actualizaciones; con actualización avisa y nombra el paquete"
+f6() { command -v nginx >/dev/null && { echo "   (omitida: nginx ya está instalado aquí, no habría paquetes por instalar)"; return 0; }
+  local ARGS="--dominio app.ejemplo.com --correo-cert a@ejemplo.com --correo-admin a@ejemplo.com --permitidos a@ejemplo.com --contacto a@ejemplo.com" o1 o2
+  o1="$(FAKE_APT_LOG=$FAKEBIN/log FAKE_APT_FIXTURE=$FX/solo_nuevos.txt PATH="$FAKEBIN:$PATH" bash instalar_convivencia.sh $ARGS 2>&1)" || return 1
+  o2="$(FAKE_APT_LOG=$FAKEBIN/log FAKE_APT_FIXTURE=$FX/con_actualizacion.txt PATH="$FAKEBIN:$PATH" bash instalar_convivencia.sh $ARGS 2>&1)" || return 1
+  echo "$o1" | grep -q "solo instalaría paquetes NUEVOS" && ! echo "$o1" | grep -q "ACTUALIZARÍA" && echo "$o2" | grep -q "ACTUALIZARÍA" && echo "$o2" | grep -q "ACTUALIZA: libssl3t64"; }; t f6
 T="simulacro del instalador: termina bien, no cambia nada del sistema"
 s7() { local antes despues; antes="$(ls /opt /etc /var/lib | md5sum; getent passwd | md5sum)"
   OUT="$(bash instalar_convivencia.sh --dominio app.ejemplo.com --correo-cert a@ejemplo.com --correo-admin a@ejemplo.com --permitidos a@ejemplo.com,b@ejemplo.com --contacto a@ejemplo.com 2>&1)" || { echo "$OUT" | tail -15; return 1; }

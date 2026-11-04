@@ -167,13 +167,7 @@ cmpoc() { [ "$DRY" = 1 ] && return 0; "$AQUI/openclaw_check.sh" --comparar "$STA
 FALTAN=(); for pk in "nginx:nginx" "postgresql:psql" "certbot:certbot" "git:git" "curl:curl" "xz-utils:xz" "ca-certificates:update-ca-certificates"; do command -v "${pk#*:}" >/dev/null 2>&1 || FALTAN+=("${pk%%:*}"); done
 if [ ${#FALTAN[@]} -gt 0 ]; then
   paso "1. Instalar paquetes que faltan: ${FALTAN[*]}" "agrega esos paquetes con apt (sin upgrade). nginx y postgresql se inician solos; ambos escuchan sin chocar con OpenClaw (se revisó 80/443/5432)."
-  export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l NEEDRESTART_SUSPEND=1   # needrestart SOLO LISTA, nunca reinicia servicios de OpenClaw
-  SIM="$(apt-get -s install --no-install-recommends "${FALTAN[@]}" 2>&1 || true)"
-  echo "$SIM" | { grep -E "^(Inst|Remv)" || true; } | sed 's/^/   /' | head -40
-  echo "$SIM" | grep -q "^Remv" && die "apt quitaría paquetes. Detenido."
-  echo "$SIM" | grep -E "^Inst .*\[" | grep -q . && { [ "$DRY" = 1 ] && warn "apt ACTUALIZARÍA paquetes ya instalados (líneas Inst con [versión]); en modo aplicar se detiene." || die "apt actualizaría paquetes ya instalados (podría afectar a OpenClaw). Detenido: revisa la lista."; }
-  [ "$DRY" = 0 ] && apt-get update -y -o DPkg::Lock::Timeout=180 >/dev/null
-  run apt-get install -y --no-install-recommends -o DPkg::Lock::Timeout=180 "${FALTAN[@]}"; anotar paquetes "${FALTAN[*]}"; cmpoc "paquetes"
+  paquetes_seguros "${FALTAN[@]}"; anotar paquetes "${FALTAN[*]}"; cmpoc "paquetes"
 else ok "1. Todos los programas necesarios ya existen: no se instala nada."; fi
 
 # ================= 2. Usuario y carpetas =================
