@@ -1,0 +1,258 @@
+{
+ "fecha": "2026-11-04T02:39:43.053Z",
+ "nota": "Stripe, Resend y Anthropic SIMULADOS localmente",
+ "resultados": [
+  {
+   "m": "tienda CERRADA: la landing no ofrece comprar (IA sin verificar) y lo dice con honestidad",
+   "ok": true
+  },
+  {
+   "m": "tienda cerrada: no existe el botón «Crear mi oficina IA»",
+   "ok": true
+  },
+  {
+   "m": "/comprar con la tienda cerrada NO crea intenciones ni abre pagos",
+   "ok": true
+  },
+  {
+   "m": "operador entra con enlace de un solo uso (sin registro ni contraseña)",
+   "ok": true
+  },
+  {
+   "m": "panel: la tienda está cerrada por «IA no verificada»",
+   "ok": true
+  },
+  {
+   "m": "«Verificar IA» hizo UNA llamada al modelo (simulado)",
+   "ok": true
+  },
+  {
+   "m": "panel: con IA verificada, cobros, precio y correo, la tienda se ABRE",
+   "ok": true
+  },
+  {
+   "m": "landing abierta: botón «Crear mi oficina IA» y precio configurable ($899 MXN/mes)",
+   "ok": true
+  },
+  {
+   "m": "la landing no pide registrarse",
+   "ok": true
+  },
+  {
+   "m": "el botón lleva DIRECTO al pago de Stripe (simulado)",
+   "ok": true
+  },
+  {
+   "m": "sesión de pago: suscripción mensual de $899 MXN, sin correo previo (Stripe lo pide)",
+   "ok": true
+  },
+  {
+   "m": "la intención guarda la fuente del anuncio (meta / lanzamiento)",
+   "ok": true
+  },
+  {
+   "m": "ANTES del pago no existe ninguna agencia, pedido ni cuenta de comprador (solo el operador)",
+   "ok": true
+  },
+  {
+   "m": "webhook con firma inválida: rechazado (400) y no crea nada",
+   "ok": true
+  },
+  {
+   "m": "webhook firmado: aceptado",
+   "ok": true
+  },
+  {
+   "m": "el mismo pago reenviado 5 veces (4 en paralelo): responde 200",
+   "ok": true
+  },
+  {
+   "m": "IDEMPOTENCIA: una sola agencia, un solo pedido, una sola cuenta",
+   "ok": true
+  },
+  {
+   "m": "agencia privada creada con su plan",
+   "ok": true
+  },
+  {
+   "m": "UN correo de bienvenida con el enlace de acceso (reenviar el pago no duplicó correos)",
+   "ok": true
+  },
+  {
+   "m": "el correo contiene un enlace de acceso temporal",
+   "ok": true
+  },
+  {
+   "m": "el token del enlace NO se guarda en la base (solo su hash)",
+   "ok": true
+  },
+  {
+   "m": "abrir el enlace NO lo gasta: pide pulsar «Entrar»",
+   "ok": true
+  },
+  {
+   "m": "dos aperturas del enlace no lo canjean (solo cuenta el botón)",
+   "ok": true
+  },
+  {
+   "m": "el enlace entra directo al asistente de configuración",
+   "ok": true
+  },
+  {
+   "m": "el MISMO enlace usado por segunda vez falla (un solo uso)",
+   "ok": true
+  },
+  {
+   "m": "paso 2: la plantilla de «Comercio electrónico» deja 3 servicios ya marcados (valores predeterminados)",
+   "ok": true
+  },
+  {
+   "m": "paso 3: empleados recomendados ya marcados",
+   "ok": true
+  },
+  {
+   "m": "PRIMERA TAREA: la ejecutó el flujo de IA real (proveedor Anthropic apuntando al servidor simulado) y NO es un ejemplo ilustrativo",
+   "ok": true
+  },
+  {
+   "m": "el consumo de IA quedó registrado en la oficina",
+   "ok": true
+  },
+  {
+   "m": "panel principal: botones muy visibles NUEVA OFICINA IA y MIS OFICINAS",
+   "ok": true
+  },
+  {
+   "m": "MIS OFICINAS lista la oficina con nombre, negocio, estado, plan y empleados",
+   "ok": true
+  },
+  {
+   "m": "nueva oficina: servicios predeterminados según el negocio",
+   "ok": true
+  },
+  {
+   "m": "muestra el PRECIO antes de confirmar la nueva compra",
+   "ok": true
+  },
+  {
+   "m": "antes de pagar NO se crea la segunda oficina",
+   "ok": true
+  },
+  {
+   "m": "el pago adicional va con el correo de la cuenta existente",
+   "ok": true
+  },
+  {
+   "m": "ANTI DOBLE COBRO: pulsar «Pagar» otra vez reutiliza el MISMO pago abierto (no abre otro)",
+   "ok": true
+  },
+  {
+   "m": "la segunda compra se vincula a la MISMA cuenta (sin duplicar usuarios): ahora tiene 2 oficinas",
+   "ok": true
+  },
+  {
+   "m": "la oficina nueva nació con el nombre y negocio elegidos antes de pagar",
+   "ok": true
+  },
+  {
+   "m": "MIS OFICINAS muestra las dos",
+   "ok": true
+  },
+  {
+   "m": "«Entrar» cambia a la otra oficina con un clic",
+   "ok": true
+  },
+  {
+   "m": "en la oficina 2 no aparece nada de la oficina 1",
+   "ok": true
+  },
+  {
+   "m": "AISLAMIENTO: Beto con la cookie de la oficina de Laura sigue viendo SU oficina",
+   "ok": true
+  },
+  {
+   "m": "AISLAMIENTO: la ficha de un cliente de Laura no se abre para Beto",
+   "ok": true
+  },
+  {
+   "m": "AISLAMIENTO: la actividad de Beto no muestra las tareas de Laura",
+   "ok": true
+  },
+  {
+   "m": "AISLAMIENTO: el resultado de una tarea de Laura no se abre para Beto",
+   "ok": true
+  },
+  {
+   "m": "Beto no es miembro de ninguna oficina de Laura",
+   "ok": true
+  },
+  {
+   "m": "pausar detiene también el cobro en la pasarela",
+   "ok": true
+  },
+  {
+   "m": "la oficina 1 quedó pausada y la 2 sigue activa",
+   "ok": true
+  },
+  {
+   "m": "la oficina PAUSADA no ejecuta tareas de IA: «Esta oficina está pausada…»",
+   "ok": true
+  },
+  {
+   "m": "cancelación de la suscripción de la oficina 2: solo ella queda «cancelada»; la 1 sigue activa",
+   "ok": true
+  },
+  {
+   "m": "la oficina 1 reanudada vuelve a trabajar con IA (la cancelada de al lado no la afecta)",
+   "ok": true
+  },
+  {
+   "m": "«Mi plan» muestra el comprobante del cobro (invoice.paid)",
+   "ok": true
+  },
+  {
+   "m": "pago fallido: aviso visible «No pudimos cobrar tu última mensualidad»",
+   "ok": true
+  },
+  {
+   "m": "pago fallido: correo transaccional enviado",
+   "ok": true
+  },
+  {
+   "m": "recuperar acceso: la respuesta es IDÉNTICA exista o no el correo (no revela cuentas)",
+   "ok": true
+  },
+  {
+   "m": "solo la cuenta real recibió el enlace de recuperación (correos de acceso recibidos: comprador1@ejemplo.test)",
+   "ok": true
+  },
+  {
+   "m": "el enlace de recuperación entra a «Mis oficinas» (tiene 2 oficinas)",
+   "ok": true
+  },
+  {
+   "m": "dashboard: visitantes=3, clics=2, pagos confirmados=3, entregadas=3",
+   "ok": true
+  },
+  {
+   "m": "dashboard: 1 oficina activada (con empleado y tarea completada)",
+   "ok": true
+  },
+  {
+   "m": "dashboard: costo de adquisición = «Sin datos» mientras no registres gasto (no se inventa)",
+   "ok": true
+  },
+  {
+   "m": "CAC con $1,000 de gasto y 2 primeras compras (la 3.ª fue adicional… fuente meta) = $500",
+   "ok": true
+  },
+  {
+   "m": "tabla de pedidos con los 3 pagos",
+   "ok": true
+  },
+  {
+   "m": "0 errores de JavaScript en navegador",
+   "ok": true
+  }
+ ]
+}
