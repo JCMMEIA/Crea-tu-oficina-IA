@@ -8,9 +8,9 @@ T="sintaxis de todos los scripts"; s1() { for f in *.sh pruebas/*.sh; do bash -n
 T="el instalador NO contiene órdenes peligrosas para OpenClaw"
 s2() { local bad=0 pat
   for pat in 'ufw +(enable|reset|default|allow|deny|delete|disable)' '--force enable' '\b(reboot|shutdown|poweroff|halt)\b' 'apt(-get)? +(upgrade|dist-upgrade|full-upgrade)' 'npm +(i|install) +(-g|--global)' 'nodesource|setup_[0-9]+\.x' '\b(pkill|killall)\b' '\bkill +-' 'certbot +--nginx' 'sites-enabled/default' 'fail2ban|fallocate|mkswap|swapon'; do
-    if grep -nE -- "$pat" instalar_convivencia.sh desinstalar_convivencia.sh continuar_fase8.sh respaldo.sh recuperar.sh tick.sh | grep -vE '^\S+:[0-9]+:\s*#|echo|warn|bad|die|NO se|no se|NO |No ' >/dev/null; then echo "   patrón peligroso: $pat"; grep -nE -- "$pat" *.sh | head -3; bad=1; fi; done
+    if grep -nE -- "$pat" instalar_convivencia.sh desinstalar_convivencia.sh continuar_fase8.sh actualizar_convivencia.sh configurar_ventas.sh respaldo.sh recuperar.sh tick.sh | grep -vE '^\S+:[0-9]+:\s*#|echo|warn|bad|die|NO se|no se|NO |No ' >/dev/null; then echo "   patrón peligroso: $pat"; grep -nE -- "$pat" *.sh | head -3; bad=1; fi; done
   # systemctl restart/stop/disable/kill/mask: solo sobre unidades propias o PostgreSQL (guardado por el chequeo de bases ajenas)
-  while read -r l; do echo "$l" | grep -qE 'crea-|\$u"|\$UNIT|\$\{UNIT\}|postgresql' || { echo "   systemctl sobre unidad no propia: $l"; bad=1; }; done < <(grep -hE 'systemctl +(restart|stop|disable|kill|mask)' instalar_convivencia.sh desinstalar_convivencia.sh continuar_fase8.sh recuperar.sh | grep -vE '^\s*#')
+  while read -r l; do echo "$l" | grep -qE 'crea-|\$u"|\$UNIT|\$\{UNIT\}|postgresql' || { echo "   systemctl sobre unidad no propia: $l"; bad=1; }; done < <(grep -hE 'systemctl +(restart|stop|disable|kill|mask)' instalar_convivencia.sh desinstalar_convivencia.sh continuar_fase8.sh actualizar_convivencia.sh configurar_ventas.sh recuperar.sh | grep -vE '^\s*#')
   return $bad; }; t s2
 T="todo 'rm' del instalador/desinstalador apunta solo a rutas propias"
 s3() { local bad=0; while read -r l; do echo "$l" | grep -qE 'crea-oficina|crea_oficina|\$APP_DIR|\$NODE_DIR|\$HOME_DIR|\$valor|\$T"|/var/www/crea-acme|\$BASE' || { echo "   rm sospechoso: $l"; bad=1; }; done < <(grep -hE '\brm +(-[rf]+ +)?' instalar_convivencia.sh desinstalar_convivencia.sh | grep -vE '^\s*#|echo'); return $bad; }; t s3
@@ -136,6 +136,11 @@ T="fase 8: temporizador inactivo se reporta como fallo"; g9() { f8setup; bash op
 T="continuar_fase8.sh: no emite/renueva certificados (solo 'renew --dry-run' con bandera), no reinicia, no toca firewall/OpenClaw/desinstalador"
 g10() { local f=continuar_fase8.sh; ! grep -nE 'certbot +(certonly|--nginx|delete|renew +--force)|certbot +(run|revoke)|--force-renewal' $f | grep -v '^\s*[0-9]*:\s*#' >/dev/null && grep -qE 'certbot renew --cert-name "\$DOM" --dry-run' $f && ! grep -nE '\b(reboot|shutdown)\b|ufw|iptables|desinstalar_convivencia\.sh' $f | grep -vE '^[0-9]+:\s*#|NUNCA|ufw' >/dev/null && ! grep -qE 'systemctl +(restart|stop|disable|kill|mask)' $f; }; t g10
 oc_down; rm -rf "$F8"; unset OPENCLAW_PORT
+T="env_set: cambia o agrega claves sin tocar las demás, conserva permisos y soporta valores con espacios, <>, / y &"
+e1() { local f; f="$(mktemp)"; chmod 640 "$f"; printf 'A=1\nSECRETO=viejo\n# comentario\n' > "$f"; ( . ./lib.sh; env_set "$f" SECRETO 'nuevo/valor&raro'; env_set "$f" MAIL_FROM '"Crea <hola@x.com>"'; env_set "$f" NUEVA 7 )
+  grep -qx 'A=1' "$f" && grep -qx 'SECRETO=nuevo/valor&raro' "$f" && grep -qx '# comentario' "$f" && grep -qx 'NUEVA=7' "$f" && grep -qx 'MAIL_FROM="Crea <hola@x.com>"' "$f" && [ "$(stat -c %a "$f")" = 640 ] && [ "$(grep -c '^SECRETO=' "$f")" = 1 ] && (set -a; . "$f"; set +a; [ "$MAIL_FROM" = "Crea <hola@x.com>" ]); }; t e1
+T="configurar_ventas.sh solo acepta claves de PRUEBA de Stripe y no enciende cobros sin la frase exacta"
+e2() { grep -q "sk_test_\[A-Za-z0-9\]+" configurar_ventas.sh && ! grep -qE "sk_live" configurar_ventas.sh && grep -q 'ACTIVAR PRUEBAS' configurar_ventas.sh && grep -q "read -r -s" configurar_ventas.sh; }; t e2
 T="simulacro del instalador: termina bien, no cambia nada del sistema"
 s7() { instalado && { echo "   (omitida: ya hay una instalación en este servidor; el instalador se niega a sobrescribir, como debe)"; OUT="DATOS DE SIMULACRO DATABASE_URL=postgres://crea_oficina_app:<oculto>@ APP_SECRET=<oculto>"; return 0; };  local antes despues; antes="$(ls /opt /etc /var/lib | md5sum; getent passwd | md5sum)"
   OUT="$(bash instalar_convivencia.sh --dominio app.ejemplo.com --correo-cert a@ejemplo.com --correo-admin a@ejemplo.com --permitidos a@ejemplo.com,b@ejemplo.com --contacto a@ejemplo.com 2>&1)" || { echo "$OUT" | tail -15; return 1; }

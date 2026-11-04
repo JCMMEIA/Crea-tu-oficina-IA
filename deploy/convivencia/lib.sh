@@ -107,3 +107,10 @@ server {
 }
 NG
 }
+
+# Cambia (o agrega) una clave KEY=valor en un archivo de configuración SIN mostrar el valor ni pasarlo por argumentos de proceso.
+env_set() {  # archivo clave valor
+  local f="$1" k="$2" tmp; tmp="$(mktemp)"
+  K="$k" V="$3" awk 'BEGIN{k=ENVIRON["K"]; v=ENVIRON["V"]; done=0} index($0, k"=")==1 {print k"="v; done=1; next} {print} END{if(!done) print k"="v}' "$f" > "$tmp"
+  cat "$tmp" > "$f"; rm -f "$tmp"   # conserva dueño y permisos del archivo original
+}
