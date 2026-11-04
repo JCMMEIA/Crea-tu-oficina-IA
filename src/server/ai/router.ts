@@ -19,11 +19,21 @@ export interface Exclusion { id: string; reason: string }
 export interface Plan { candidates: { model: ModelRow; maxCostUsd: number }[]; excluded: Exclusion[] }
 
 export const estimateTokens = (req: Pick<CompleteRequest, "system" | "messages" | "tools">) => Math.ceil((req.system.length + JSON.stringify(req.messages).length + JSON.stringify(req.tools).length) / 3.2);
-/** Margen de seguridad sobre el precio de catálogo y sobre el conteo aproximado de tokens de entrada: el costo reservado y el tope por llamada se calculan con él, y a OpenRouter se le exige `max_price` = precio × margen. */
-export const COST_MARGIN = 1.25;
+/**
+ * UNA sola fuente de verdad para los límites de costo. Todo se calcula con el MISMO tope de precio:
+ *  · `priceCeiling(m)` = precio de catálogo × PRICE_MARGIN, en entrada Y en salida. Es lo que se envía a OpenRouter como `provider.max_price`.
+ *  · `worstCaseCost` = peor caso con ese tope: (tokens de entrada estimados × INPUT_TOKEN_MARGIN) × tope de entrada + (max_tokens de salida) × tope de salida.
+ * Ese costo máximo es el que se compara con los límites por llamada, por tarea y mensual y el que se RESERVA. Son ESTIMACIONES de control, no una garantía absoluta de facturación:
+ * el conteo de tokens de entrada es aproximado, el proveedor puede facturar tokens de razonamiento, y el costo final lo informa OpenRouter. Por eso, tras cada llamada se liquida el costo REAL.
+ */
+export const PRICE_MARGIN = 1.25;
+export const INPUT_TOKEN_MARGIN = 1.25;
+export const COST_MARGIN = PRICE_MARGIN; // nombre anterior (compatibilidad)
 /** Si el costo real supera el máximo estimado por más de este factor, el modelo se desactiva solo. */
 export const ANOMALY_FACTOR = 1.5;
-const maxCost = (m: ModelRow, estIn: number, maxOut: number) => (estIn * COST_MARGIN * m.price_in_usd_mtok + maxOut * m.price_out_usd_mtok) / 1e6;
+export const priceCeiling = (m: Pick<ModelRow, "price_in_usd_mtok" | "price_out_usd_mtok">) => ({ in: m.price_in_usd_mtok * PRICE_MARGIN, out: m.price_out_usd_mtok * PRICE_MARGIN });
+export const worstCaseCost = (m: Pick<ModelRow, "price_in_usd_mtok" | "price_out_usd_mtok">, estIn: number, maxOut: number) => { const c = priceCeiling(m); return (estIn * INPUT_TOKEN_MARGIN * c.in + maxOut * c.out) / 1e6; };
+const maxCost = worstCaseCost;
 const PREFERENCE: Record<Level, Tier[]> = { A: ["free", "economy", "premium"], B: ["economy", "premium", "free"], C: ["premium", "economy"] };
 const policyOk = (m: ModelRow, sens: Sensitivity, s: AiSettings): string | null => {
   if (sens === "public") return null;
@@ -95,7 +105,7 @@ export class RoutedProvider implements ModelProvider {
       if (!system) r = await reserve(db, { accountId, companyId: meta!.companyId, taskId: meta!.taskId, credits: (estIn + req.maxTokens) * m.credit_weight, usd: cand.maxCostUsd, limit });
       const started = t0();
       try {
-        const out = await be.complete(m.model_id, { ...req, meta: undefined }, { sensitivity: sens, allowedProviders: m.allowed_providers, maxPrice: { in: m.price_in_usd_mtok * COST_MARGIN, out: m.price_out_usd_mtok * COST_MARGIN } }); const ms = t0() - started;
+        const out = await be.complete(m.model_id, { ...req, meta: undefined }, { sensitivity: sens, allowedProviders: m.allowed_providers, maxPrice: priceCeiling(m) }); const ms = t0() - started;
         const tokens = out.inputTokens + out.outputTokens; const est = (out.inputTokens * m.price_in_usd_mtok + out.outputTokens * m.price_out_usd_mtok) / 1e6;
         const cost = typeof out.costUsd === "number" ? out.costUsd : est; const credits = tokens * m.credit_weight; const v = validateOutput(out, meta?.validate);
         if (r) await settle(db, r, { credits, usd: cost, tokens });

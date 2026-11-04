@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Db } from "@/server/db";
 import { newDb } from "./helpers";
-import { explainError, getSettings, listModels, listPlanLimits, modelInputFromForm, parseNumber, saveModel, setModelEnabled, slugId, updatePlanLimit, updateSettings, usableModels } from "@/server/ai/config";
+import { ID_MAX, explainError, getSettings, listModels, listPlanLimits, modelInputFromForm, parseNumber, saveModel, setModelEnabled, slugId, uniqueId, updatePlanLimit, withSuffix, updateSettings, usableModels } from "@/server/ai/config";
 
 /**
  * INCIDENTE: en /admin/ia «el modelo no se guardó» (catálogo vacío tras recargar). Causa raíz reproducida: el formulario rechazaba entradas normales
@@ -83,4 +83,30 @@ describe("compatibilidad con la versión anterior (rollback del instalador v2)",
     const m = (await listModels(db))[0]; expect(m.allowed_providers).toEqual([]); // sin proveedores aprobados: no apto para datos sensibles (falla cerrado)
   });
   it("las sentencias del router en el esquema son idempotentes: aplicarlas dos veces no falla", async () => { const fs = await import("node:fs"); const stmts = fs.readFileSync("src/server/db/schema.sql", "utf8").split(/;\s*\n/).map((q) => q.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n").trim()).filter((q) => /ai_models/.test(q)).filter((q) => /^(CREATE|ALTER)/i.test(q)); expect(stmts.length).toBeGreaterThanOrEqual(2); for (let i = 0; i < 2; i++) for (const q of stmts) await db.query(q); expect((await db.query("SELECT count(*)::int n FROM information_schema.columns WHERE table_name='ai_models' AND column_name='allowed_providers'"))[0].n).toBe(1); });
+});
+
+/** CORRECCIÓN: `${base}-${n}`.slice(0, 60) perdía el sufijo cuando la base tenía 60 caracteres: el candidato nunca cambiaba y la generación de id no terminaba. */
+describe("identificadores internos con sufijo: siempre únicos, ≤ 60 caracteres y sin bucles", () => {
+  const largo = (n: string) => `vendor-con-un-nombre-de-modelo-extremadamente-largo-${n}`; // el slug derivado se trunca a 60 con el mismo prefijo
+  it("withSuffix conserva el sufijo recortando la BASE; con una base de 60 caracteres los candidatos son todos distintos y ≤ 60", () => {
+    const base = "a".repeat(60); const vistos = new Set<string>(); for (let n = 1; n <= 1000; n++) { const c = withSuffix(base, n); expect(c.length).toBeLessThanOrEqual(ID_MAX); if (n > 1) expect(c.endsWith(`-${n}`)).toBe(true); vistos.add(c); }
+    expect(vistos.size).toBe(1000); expect(withSuffix(base, 2)).toBe("a".repeat(58) + "-2"); expect(withSuffix(base, 10)).toBe("a".repeat(57) + "-10");
+    // el comportamiento anterior: el sufijo se perdía y el candidato no cambiaba nunca
+    expect(`${base}-2`.slice(0, 60)).toBe(base);
+  });
+  it("si al recortar la base queda un separador al final, se limpia (sin «--2»)", () => { const base = "a".repeat(56) + "-abc"; expect(withSuffix(base, 12)).toBe("a".repeat(56) + "-12"); expect(withSuffix("x".repeat(57) + "--y", 2)).not.toMatch(/--/); });
+  it("uniqueId: colisiones consecutivas con base de 60 caracteres → base, base-2, base-3…; y tiene tope de seguridad (no se cuelga)", async () => {
+    const base = "b".repeat(60); const tomados = new Set<string>(); const sacados: string[] = []; for (let i = 0; i < 25; i++) { const id = await uniqueId(base, async (c) => tomados.has(c)); expect(tomados.has(id)).toBe(false); tomados.add(id); sacados.push(id); }
+    expect(sacados[0]).toBe(base); expect(sacados[1]).toBe("b".repeat(58) + "-2"); expect(new Set(sacados).size).toBe(25); expect(sacados.every((x) => x.length <= ID_MAX)).toBe(true);
+    await expect(uniqueId(base, async () => true, 50)).rejects.toThrow(/No se pudo generar un identificador interno libre/);
+  });
+  it("saveModel: 15 modelos DISTINTOS cuyo id derivado coincide en los primeros 60 caracteres reciben ids únicos (sin bucle) y se pueden volver a consultar", async () => {
+    const ids: string[] = []; for (let i = 0; i < 15; i++) { const r = await saveModel(db, OP, { ...base, id: "", model_id: largo(`variante-${i}`), label: `Modelo largo ${i}`, enabled: false, verified: false }); expect(r.action).toBe("creado"); ids.push(r.id); }
+    expect(new Set(ids).size).toBe(15); expect(ids.every((x) => x.length <= ID_MAX && /^[a-z0-9][a-z0-9._-]+$/.test(x))).toBe(true); expect(ids[0].length).toBe(ID_MAX); expect(ids[1]).toBe(withSuffix(ids[0], 2)); expect(ids[14]).toBe(withSuffix(ids[0], 15)); expect(ids[1].endsWith("-2") && ids[14].endsWith("-15")).toBe(true);
+    expect((await listModels(db)).length).toBe(15); const otra = await saveModel(db, OP, { ...base, id: "", model_id: largo("variante-3"), label: "Modelo largo 3", enabled: false, verified: false }); expect(otra.action).toBe("sin_cambios"); expect(otra.id).toBe(ids[3]); expect((await listModels(db)).length).toBe(15); // sigue siendo idempotente
+  });
+  it("también con ids explícitos nuevos de 60 caracteres que chocan: modelos distintos no se pisan", async () => {
+    const a60 = "c".repeat(60); const r1 = await saveModel(db, OP, { ...base, id: a60, model_id: "vendor/c1", label: "Modelo C1", enabled: false, verified: false }); expect(r1.id).toBe(a60);
+    const r2 = await saveModel(db, OP, { ...base, id: "", model_id: "c".repeat(50), label: "Modelo C2", provider: "anthropic", allowed_providers: "", enabled: false, verified: false }); expect(r2.id.length).toBeLessThanOrEqual(ID_MAX); expect(r2.id).not.toBe(r1.id);
+  });
 });

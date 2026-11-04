@@ -25,6 +25,14 @@ const numField = (label: string, o: { min: number; max: number; int?: boolean; e
 const flag = z.preprocess((v) => v === true || v === "on" || v === "true" || v === "1", z.boolean());
 /** Identificador interno seguro: minúsculas, números, punto, guion bajo y guion. «anthropic/Claude Haiku 5.5» → «anthropic-claude-haiku-5.5». */
 export const slugId = (s: string) => String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9._-]+/g, "-").replace(/^[^a-z0-9]+|[-._]+$/g, "").slice(0, 60);
+export const ID_MAX = 60;
+/** Id con sufijo numérico que SIEMPRE cabe en ID_MAX: se recorta la BASE (no el sufijo), así dos bases largas que comparten el prefijo reciben sufijos distintos y nunca se repite el mismo candidato. */
+export function withSuffix(base: string, n: number): string { if (n <= 1) return base.slice(0, ID_MAX); const suf = `-${n}`; const head = base.slice(0, ID_MAX - suf.length).replace(/[-._]+$/, ""); return `${head}${suf}`; }
+/** Busca el primer id libre: base, base-2, base-3… Con tope de seguridad: si algo impidiera avanzar, falla con un mensaje en lugar de quedarse en un bucle. */
+export async function uniqueId(base: string, taken: (id: string) => Promise<boolean>, limit = 1000): Promise<string> {
+  for (let n = 1; n <= limit; n++) { const c = withSuffix(base, n); if (!(await taken(c))) return c; }
+  throw new Error("No se pudo generar un identificador interno libre para este modelo. Escribe uno propio en «Identificador interno».");
+}
 export const PROVIDER_SLUG = /^[a-z0-9][a-z0-9._/-]{0,60}$/;
 const providersField = z.preprocess((v) => (Array.isArray(v) ? v : String(v ?? "").split(/[,;\n]+/)).map((x) => String(x).trim().toLowerCase()).filter(Boolean), z.array(z.string().regex(PROVIDER_SLUG, "Un proveedor aprobado solo puede tener minúsculas, números, punto, guion y barra (por ejemplo «amazon-bedrock»).")).max(8, "Máximo 8 proveedores aprobados por modelo."));
 const modelSchema = z.object({
@@ -52,7 +60,7 @@ export async function saveModel(db: Db, op: Operator | null, input: unknown): Pr
     const sameModel: any = (await t.query("SELECT * FROM ai_models WHERE provider=$1 AND model_id=$2", [m.provider, m.model_id]))[0];
     if (existing && sameModel && sameModel.id !== existing.id) throw new Error(`Ya existe otro modelo registrado con ese proveedor y esa id de modelo («${sameModel.id}»). Edítalo en lugar de crear otro.`);
     if (!existing && sameModel) { existing = sameModel; matchedBy = "proveedor+modelo"; }
-    let id: string; if (existing) id = existing.id as string; else { const base = byId.length >= 2 ? byId : slugId(`${m.provider}-${m.model_id}`) || "modelo"; id = base; for (let n = 2; (await t.query("SELECT 1 FROM ai_models WHERE id=$1", [id])).length; n++) id = `${base}-${n}`.slice(0, 60); }
+    let id: string; if (existing) id = existing.id as string; else { const base = byId.length >= 2 ? byId : slugId(`${m.provider}-${m.model_id}`) || "modelo"; id = await uniqueId(base, async (c) => (await t.query("SELECT 1 FROM ai_models WHERE id=$1", [c])).length > 0); }
     const vals = [m.provider, m.model_id, m.label, m.tier, m.max_level, m.price_in_usd_mtok, m.price_out_usd_mtok, m.context_window, m.supports_tools, m.supports_json, m.data_policy, m.credit_weight, m.enabled, m.verified, m.notes, m.allowed_providers];
     let action: SaveModelResult["action"] = "creado";
     if (existing) { const before = rowToModel(existing) as any; const same = FIELDS.every((k, i) => JSON.stringify(before[k]) === JSON.stringify(vals[i])); action = same ? "sin_cambios" : "actualizado"; }

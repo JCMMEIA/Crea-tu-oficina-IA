@@ -8,7 +8,7 @@ import type { Backend, BackendResult, CallOpts } from "@/server/ai/backends";
 import { TransientProviderError, type CompleteRequest } from "@/server/models";
 import { ensurePlanDefaults, getSettings, listModels, listPlanLimits, saveModel, updatePlanLimit, updateSettings } from "@/server/ai/config";
 import { accountOf, quotaStatus } from "@/server/ai/quota";
-import { COST_MARGIN, createRoutedProvider, planRoute } from "@/server/ai/router";
+import { ANOMALY_FACTOR, INPUT_TOKEN_MARGIN, PRICE_MARGIN, createRoutedProvider, estimateTokens, planRoute, priceCeiling, worstCaseCost } from "@/server/ai/router";
 import { DEFAULT_SETTINGS } from "@/server/ai/types";
 
 /** COSTOS: tope por llamada, por tarea y mensual; reservas, liquidación con costo REAL y reintentos. Proveedor simulado: ninguna llamada real. */
@@ -27,10 +27,10 @@ describe("máximo por llamada (configuración de prueba controlada: US$ 0.05)", 
   it("el modelo cuyo costo MÁXIMO supera US$0.05 queda excluido; el barato entra; el margen cuenta", async () => {
     await saveModel(db, OP, M("barato", "0.10", "0.50")); await saveModel(db, OP, M("caro", "15", "75")); const models = await listModels(db);
     const p = route(models, { settings: { ...DEFAULT_SETTINGS, maxCallUsd: 0.05 } }); expect(p.candidates.map((c) => c.model.id)).toEqual(["barato"]); expect(p.excluded.find((e) => e.id === "caro")!.reason).toMatch(/supera el presupuesto disponible/);
-    expect(p.candidates[0].maxCostUsd).toBeCloseTo((3000 * COST_MARGIN * 0.1 + 2000 * 0.5) / 1e6, 10); // margen del 25 % sobre la entrada
+    expect(p.candidates[0].maxCostUsd).toBeCloseTo((3000 * INPUT_TOKEN_MARGIN * 0.1 * PRICE_MARGIN + 2000 * 0.5 * PRICE_MARGIN) / 1e6, 10); // el MISMO tope de precio en entrada y salida
   });
   it("el tope de la llamada es el MÍNIMO entre el de reglas, lo que queda de la tarea y lo que queda del mes", async () => {
-    await saveModel(db, OP, M("m", "1", "5")); const models = await listModels(db); const costo = (3000 * COST_MARGIN * 1 + 2000 * 5) / 1e6; // ≈ 0.01375
+    await saveModel(db, OP, M("m", "1", "5")); const models = await listModels(db); const costo = worstCaseCost({ price_in_usd_mtok: 1, price_out_usd_mtok: 5 }, 3000, 2000);
     expect(route(models, { settings: { ...DEFAULT_SETTINGS, maxCallUsd: costo + 0.001 } }).candidates).toHaveLength(1); expect(route(models, { settings: { ...DEFAULT_SETTINGS, maxCallUsd: costo - 0.001 } }).candidates).toHaveLength(0);
     expect(route(models, { taskRemainingUsd: costo - 0.001 }).candidates).toHaveLength(0); expect(route(models, { remainingUsd: costo - 0.001 }).candidates).toHaveLength(0);
   });
@@ -40,7 +40,7 @@ describe("máximo por llamada (configuración de prueba controlada: US$ 0.05)", 
 });
 describe("precio de catálogo vs. precio real: el límite se aplica en la API, no solo en el cálculo", () => {
   it("a OpenRouter se le envía max_price = precio de catálogo × margen, y proveedores fijados", async () => {
-    await saveModel(db, OP, M("m", "0.10", "0.50")); await go(new Fake()); expect(seen[0].opts.maxPrice).toEqual({ in: 0.1 * COST_MARGIN, out: 0.5 * COST_MARGIN }); expect(seen[0].opts.allowedProviders).toEqual(["amazon-bedrock"]);
+    await saveModel(db, OP, M("m", "0.10", "0.50")); await go(new Fake()); expect(seen[0].opts.maxPrice).toEqual({ in: 0.1 * PRICE_MARGIN, out: 0.5 * PRICE_MARGIN }); expect(seen[0].opts.allowedProviders).toEqual(["amazon-bedrock"]);
   });
   it("la reserva usa el costo máximo CON margen (≥ lo que costaría al precio de catálogo)", async () => {
     await saveModel(db, OP, M("m", "0.10", "0.50")); await go(new Fake()); const r = (await db.query("SELECT usd::float u FROM ai_reservations"))[0]; expect(r.u).toBeGreaterThan(0); expect(r.u).toBeGreaterThanOrEqual((1000 * 0.1 + 400 * 0.5) / 1e6);
@@ -63,7 +63,7 @@ describe("reservas, liquidación y reintentos", () => {
     for (const id of ["a", "b", "c"]) await saveModel(db, OP, M(id, "0.10", "0.50")); await updateSettings(db, OP, { maxAttempts: 2 }); const { status } = await go(new Fake(() => "transient")); expect(status).toBe("failed"); expect(seen).toHaveLength(2);
   });
   it("tope por TAREA: las respuestas inválidas ya cobradas cuentan; al agotarse se detiene sin llamar de más", async () => {
-    await saveModel(db, OP, M("a", "100", "300")); await saveModel(db, OP, M("b", "100", "301")); await updateSettings(db, OP, { maxCallUsd: 1, maxAttempts: 3 }); await db.query("UPDATE agencies SET plan='prueba'"); await updatePlanLimit(db, OP, "prueba", { monthly_credits: "50000000", monthly_budget_usd: "5", max_offices: "1", allowed_tiers: ["free", "economy"], max_level: "B", max_task_usd: "0.7" });
+    await saveModel(db, OP, M("a", "100", "300")); await saveModel(db, OP, M("b", "100", "301")); await updateSettings(db, OP, { maxCallUsd: 3, maxAttempts: 3 }); await db.query("UPDATE agencies SET plan='prueba'"); await updatePlanLimit(db, OP, "prueba", { monthly_credits: "50000000", monthly_budget_usd: "5", max_offices: "1", allowed_tiers: ["free", "economy"], max_level: "B", max_task_usd: "2" });
     // cada llamada cuesta ≈ US$0.35 reales y devuelve texto corto: la validación exige minChars solo en guiadas, así que forzamos el costo alto
     const be = new Fake(() => ({ costUsd: 0.35 })); const { status } = await go(be); expect(status).toBe("completed"); expect(seen).toHaveLength(1);
   });
@@ -86,5 +86,55 @@ describe("presupuesto mensual y concurrencia", () => {
     const m = (await listModels(db)).find((x) => x.id === "mod1")!; expect(m.enabled).toBe(false); expect(m.notes).toMatch(/desactivado automáticamente/); expect((await db.query("SELECT detail FROM audit_log WHERE action='ai.model.auto_disabled'"))).toHaveLength(1);
     const r2 = await go(be, 2); expect(r2.status).toBe("completed"); expect(seen.map((s) => s.model)).toEqual(["v/mod1", "v/mod2"]); // la siguiente tarea ya no usa el modelo desactivado
     expect((await quotaStatus(db, await accountOf(db, a.companyId))).usdUsed).toBeCloseTo(0.045, 8);
+  });
+});
+
+/** CORRECCIÓN: el margen de precio se aplicaba a la entrada pero no a la salida; el tope enviado a OpenRouter (precio × margen en AMBOS) podía superar lo reservado. Ahora hay una sola fuente de verdad. */
+describe("consistencia entre max_price enviado, costo reservado y límites (entrada Y salida)", () => {
+  beforeEach(async () => { await db.query("UPDATE agencies SET plan='pro'"); });
+  const price = { price_in_usd_mtok: 0.4, price_out_usd_mtok: 5 };
+  const direct = async (maxTokens: number, be: Backend, taskId: string | null = null) => createRoutedProvider({ db, backends: [be] }).complete({ system: "Eres un asistente de pruebas.", messages: [{ role: "user", content: "Resume el pedido número 12345 en una frase." }], tools: [], maxTokens, meta: { companyId: a.companyId, employeeId: null, taskId, level: "B", sensitivity: "internal", needsTools: false, needsJson: false, reasons: [] } as any });
+  const req = (maxTokens: number) => ({ system: "Eres un asistente de pruebas.", messages: [{ role: "user" as const, content: "Resume el pedido número 12345 en una frase." }], tools: [], maxTokens });
+  it("el costo máximo usa el tope de precio en la SALIDA: con salida alta supera lo que calculaba la fórmula anterior", () => {
+    const antes = (estIn: number, maxOut: number) => (estIn * PRICE_MARGIN * price.price_in_usd_mtok + maxOut * price.price_out_usd_mtok) / 1e6; // fórmula anterior (margen solo en entrada)
+    for (const maxOut of [500, 4000, 16000, 64000]) { const nuevo = worstCaseCost(price, 800, maxOut); expect(nuevo).toBeCloseTo((800 * INPUT_TOKEN_MARGIN * price.price_in_usd_mtok * PRICE_MARGIN + maxOut * price.price_out_usd_mtok * PRICE_MARGIN) / 1e6, 12); expect(nuevo).toBeGreaterThan(antes(800, maxOut)); }
+    const c = priceCeiling(price); expect(c).toEqual({ in: 0.4 * PRICE_MARGIN, out: 5 * PRICE_MARGIN });
+    // con salida alta el 25 % de la salida domina: el costo máximo es ≥ salida × tope de salida
+    expect(worstCaseCost(price, 800, 64000)).toBeGreaterThanOrEqual((64000 * c.out) / 1e6);
+  });
+  it("lo que se envía como max_price, lo que se reserva y lo que se compara con los límites son el MISMO tope", async () => {
+    await saveModel(db, OP, M("m", "0.4", "5")); const models = await listModels(db); const be = new Fake(); await direct(8000, be); const estIn = estimateTokens(req(8000));
+    const esperado = worstCaseCost(models[0], estIn, 8000); expect(seen[0].opts.maxPrice).toEqual(priceCeiling(models[0]));
+    const plan = route(models, { estIn, maxOut: 8000 }); expect(plan.candidates[0].maxCostUsd).toBeCloseTo(esperado, 12);
+    const r = (await db.query("SELECT usd::float u FROM ai_reservations"))[0]; expect(r.u).toBeCloseTo(esperado, 9);
+  });
+  it("INVARIANTE: si el proveedor cobra exactamente al tope (max_price) con el peor caso de tokens, el costo real NO supera lo reservado ni dispara la alarma", async () => {
+    await saveModel(db, OP, M("m", "0.4", "5")); const models = await listModels(db); const estIn = estimateTokens(req(8000)); const c = priceCeiling(models[0]); const inTok = Math.floor(estIn * INPUT_TOKEN_MARGIN), outTok = 8000;
+    await direct(8000, new Fake(() => ({ inputTokens: inTok, outputTokens: outTok, costUsd: (inTok * c.in + outTok * c.out) / 1e6 })));
+    const call = (await db.query("SELECT cost_usd::float c, fallback_reason FROM ai_calls"))[0]; const res = (await db.query("SELECT usd::float u FROM ai_reservations"))[0]; expect(call.c).toBeLessThanOrEqual(res.u + 1e-12); expect(call.fallback_reason).toBeNull(); expect((await listModels(db))[0].enabled).toBe(true);
+  });
+  it("con tokens de salida elevados, el tope por llamada excluye el modelo en el límite exacto del costo CON margen de salida", async () => {
+    await saveModel(db, OP, M("m", "0.4", "5")); const models = await listModels(db); const w = worstCaseCost(models[0], 800, 12000);
+    expect(route(models, { estIn: 800, maxOut: 12000, settings: { ...DEFAULT_SETTINGS, maxCallUsd: w + 1e-6 } }).candidates).toHaveLength(1); expect(route(models, { estIn: 800, maxOut: 12000, settings: { ...DEFAULT_SETTINGS, maxCallUsd: w - 1e-6 } }).candidates).toHaveLength(0);
+    // con la fórmula anterior (margen solo en la entrada) este caso se habría ACEPTADO aunque el tope enviado a OpenRouter permitía gastar más que el límite
+    const antes = (800 * PRICE_MARGIN * 0.4 + 12000 * 5) / 1e6; expect(antes).toBeLessThan(w - 1e-6); expect(route(models, { estIn: 800, maxOut: 12000, settings: { ...DEFAULT_SETTINGS, maxCallUsd: (antes + w) / 2 } }).candidates).toHaveLength(0);
+  });
+  it("tope por tarea y presupuesto mensual usan el mismo costo máximo (salida elevada)", async () => {
+    await saveModel(db, OP, M("m", "0.4", "5")); const models = await listModels(db); const w = worstCaseCost(models[0], 800, 12000);
+    expect(route(models, { estIn: 800, maxOut: 12000, taskRemainingUsd: w + 1e-6 }).candidates).toHaveLength(1); expect(route(models, { estIn: 800, maxOut: 12000, taskRemainingUsd: w - 1e-6 }).candidates).toHaveLength(0);
+    expect(route(models, { estIn: 800, maxOut: 12000, remainingUsd: w + 1e-6 }).candidates).toHaveLength(1); expect(route(models, { estIn: 800, maxOut: 12000, remainingUsd: w - 1e-6 }).candidates).toHaveLength(0);
+  });
+  it("CONCURRENCIA con salida alta: solo caben tantas llamadas como el presupuesto permite; nunca se sobrepasa aunque cada una cueste el peor caso", async () => {
+    await saveModel(db, OP, M("m", "0.4", "5")); const models = await listModels(db); const estIn = estimateTokens(req(8000)); const w = worstCaseCost(models[0], estIn, 8000); const K = 3; const budget = w * K + w * 0.4;
+    await db.query("UPDATE agencies SET plan='prueba'"); await updatePlanLimit(db, OP, "prueba", { monthly_credits: "900000000", monthly_budget_usd: String(budget), max_offices: "1", allowed_tiers: ["free", "economy"], max_level: "B", max_task_usd: String(budget) });
+    const c = priceCeiling(models[0]); const inTok = Math.floor(estIn * INPUT_TOKEN_MARGIN), outTok = 8000; const worst = () => ({ inputTokens: inTok, outputTokens: outTok, costUsd: (inTok * c.in + outTok * c.out) / 1e6 });
+    const results = await Promise.allSettled(Array.from({ length: 10 }, () => direct(8000, new Fake(() => worst())))); const ok = results.filter((r) => r.status === "fulfilled").length;
+    const q = await quotaStatus(db, await accountOf(db, a.companyId)); expect(ok).toBe(K); expect(q.usdUsed + q.usdReserved).toBeLessThanOrEqual(budget + 1e-9); expect(q.usdUsed).toBeLessThanOrEqual(K * w + 1e-9); expect(q.usdReserved).toBe(0); expect(results.filter((r) => r.status === "rejected")).toHaveLength(10 - K);
+    expect((await db.query("SELECT count(*)::int n FROM ai_calls WHERE status='ok'"))[0].n).toBe(K);
+  });
+  it("el freno por anomalía sigue funcionando con el nuevo máximo (1.5× el costo máximo, no del costo de catálogo)", async () => {
+    await saveModel(db, OP, M("m", "0.4", "5")); const estIn = estimateTokens(req(8000)); const models = await listModels(db); const w = worstCaseCost(models[0], estIn, 8000);
+    await direct(8000, new Fake(() => ({ costUsd: w * 1.2 }))); expect((await listModels(db))[0].enabled).toBe(true); expect((await db.query("SELECT fallback_reason FROM ai_calls"))[0].fallback_reason).toMatch(/superó el máximo estimado/);
+    await direct(8000, new Fake(() => ({ costUsd: w * ANOMALY_FACTOR * 1.1 }))).catch(() => {}); expect((await listModels(db))[0].enabled).toBe(false);
   });
 });
