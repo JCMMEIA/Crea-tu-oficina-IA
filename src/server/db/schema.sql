@@ -284,3 +284,5 @@ ALTER TABLE emails ADD COLUMN IF NOT EXISTS delivery_detail text;
 ALTER TABLE emails ADD COLUMN IF NOT EXISTS manual_retries int NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS emails_provider_idx ON emails(provider_id);
 CREATE INDEX IF NOT EXISTS emails_status_idx ON emails(status, created_at);
+-- Identidad de empleados: foto personalizada del cliente (imagen pequeña validada, data URL). El nombre propio usa employees.name.
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo text;

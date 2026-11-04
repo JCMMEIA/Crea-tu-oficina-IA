@@ -1,3 +1,4 @@
+import { identityFor } from "@/features/employees/catalog";
 import { z } from "zod";
 import { Db, Row, newId } from "../db";
 import { Actor, assertCan, audit } from "../auth";
@@ -55,7 +56,7 @@ export async function hireFromTemplate(db: Db, actor: Actor, templateKey: string
   for (const c of tpl.connections) perms[c.toolkit] = "read"; // solo lectura al inicio
   await db.tx(async (t) => {
     await t.query(`INSERT INTO employees(id,company_id,department_id,template_key,name,role_title,description,permissions)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, [id, actor.companyId, depId, tpl.key, name?.trim() || tpl.name, tpl.name, tpl.mission, JSON.stringify(perms)]);
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, [id, actor.companyId, depId, tpl.key, name?.trim() || identityFor(tpl.key)?.nombre || tpl.name, tpl.name, tpl.mission, JSON.stringify(perms)]);
     await t.query("INSERT INTO skill_versions(id,company_id,employee_id,version,spec,note,author) VALUES($1,$2,$3,1,$4,'Skill inicial de la plantilla',$5)",
       [newId(), actor.companyId, id, JSON.stringify(skill), actor.email]);
   });
@@ -121,7 +122,7 @@ export async function setPermissions(db: Db, actor: Actor, employeeId: string, p
 export async function listOffice(db: Db, actor: Actor): Promise<Row[]> {
   assertCan(actor, "read");
   const deps = await db.query("SELECT id,key,name,custom FROM departments WHERE company_id=$1 ORDER BY name", [actor.companyId]);
-  const emps = await db.query("SELECT id,department_id,template_key,name,role_title,description,status,permissions,max_output_tokens,max_runs_per_day,current_skill_version FROM employees WHERE company_id=$1 ORDER BY created_at", [actor.companyId]);
+  const emps = await db.query("SELECT id,department_id,template_key,name,role_title,description,photo,status,permissions,max_output_tokens,max_runs_per_day,current_skill_version FROM employees WHERE company_id=$1 ORDER BY created_at", [actor.companyId]);
   return deps.map((d) => ({ ...d, employees: emps.filter((e) => e.department_id === d.id) }));
 }
 

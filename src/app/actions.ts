@@ -6,6 +6,8 @@ import { getDb } from "@/server/db";
 import { agencyActorFromToken, login, logout, signup } from "@/server/auth";
 import { COMPANY_COOKIE, COOKIE, requireActor, setSessionCookie } from "@/lib/session";
 import { createCustomDepartment, createCustomEmployee, deleteEmployee, duplicateEmployee, hireFromTemplate, setEmployeeStatus, setPermissions, updateProfile } from "@/server/catalog/office";
+import { personalizeEmployee } from "@/features/employees/service";
+import { photoToDataUrl } from "@/features/employees/photo";
 import { buildTaughtSkill } from "@/lib/teach";
 import { beginnerToSpec, getCurrentSkill, importSkill, restoreVersion, saveSkillVersion, skillSpecSchema } from "@/server/skills";
 import { createTask, decideApproval, DuplicateTaskError, retryTask, runWorkflow } from "@/server/tasks";
@@ -200,4 +202,15 @@ export async function reviewInventoryAction(f: FormData) {
     if (e?.digest) throw e; return redirect("/inventario?error=" + encodeURIComponent(e.message));
   }
   revalidatePath("/", "layout"); redirect(target);
+}
+
+/** Cambia el nombre y/o la foto de un empleado de ESTA oficina. No toca su enseñanza ni la ejecución de la IA. */
+export async function personalizeEmployeeAction(f: FormData) {
+  const { db, actor } = await requireActor(); const id = s(f, "id");
+  await safe(`/empleados/${id}`, async () => {
+    const file = f.get("photo"); let photo: string | undefined;
+    if (file instanceof File && file.size > 0) photo = photoToDataUrl(new Uint8Array(await file.arrayBuffer()), file.type);
+    await personalizeEmployee(db, actor, id, { name: f.has("name") ? s(f, "name") : undefined, photo, removePhoto: f.get("removePhoto") === "on" });
+    return "Listo: guardamos el nombre y la foto.";
+  });
 }

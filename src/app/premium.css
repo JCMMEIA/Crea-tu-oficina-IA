@@ -176,3 +176,16 @@ button[aria-disabled=true],.btn[aria-disabled=true]{opacity:.5;cursor:not-allowe
 .dept{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.dept:last-child{border:0}
 @media(max-width:800px){.shell{display:block}nav.side{position:static;height:auto;flex-direction:column}nav.side.closed .logo~*:not(.menu-btn){display:none}.bottom-bar{background:rgba(8,7,28,.96);border-top:1px solid var(--line)}.bottom-bar a{color:#d7d4f3}.bottom-bar a svg{color:var(--brand-light)}}
 /* alternar pantalla completa del demo: sin barra inferior propia */
+
+/* ===== Identidad de empleados IA ===== */
+.emp-photo{border-radius:50%;object-fit:cover;flex:none;border:2px solid rgba(255,255,255,.18);background:#2a2f5a}
+.emp-mono{display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;background:linear-gradient(135deg,#1e2a5a,#6d4ad6);letter-spacing:.02em}
+.emp-card{display:flex;flex-direction:column;gap:8px}
+.emp-card-main{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit}
+.emp-card-txt{display:flex;flex-direction:column;min-width:0}.emp-puesto{font-size:.92rem}.emp-dep{font-size:.8rem;opacity:.7}
+.emp-linea{margin:0}.emp-esp{margin:0;font-size:.9rem}
+.emp-tag{font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid currentColor;opacity:.85}
+.emp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}.emp-actions form{flex:1}
+.emp-head{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.emp-ready{list-style:none;padding:0;margin:12px 0;display:grid;gap:8px}.emp-ready li{display:flex;flex-direction:column;gap:2px}.emp-ready small{opacity:.75}
+.emp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}

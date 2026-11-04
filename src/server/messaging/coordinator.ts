@@ -164,7 +164,7 @@ class Session {
   private async listEmployees(c: AccessibleCompany) {
     const rows = await this.db.query("SELECT e.name,e.role_title,e.status,d.name dep FROM employees e JOIN departments d ON d.id=e.department_id WHERE e.company_id=$1 ORDER BY d.name,e.created_at LIMIT 30", [c.id]);
     if (!rows.length) return this.say(`${c.name} aún no tiene empleados de IA.`);
-    this.say(`Empleados de ${c.name}:\n${rows.map((r) => `• ${r.name} — ${r.dep}${r.status !== "active" ? ` (${r.status === "paused" ? "en pausa" : "inactivo"})` : ""}`).join("\n")}`);
+    this.say(`Empleados de ${c.name}:\n${rows.map((r) => `• ${r.name}${r.role_title && r.role_title !== r.name ? `, ${r.role_title}` : ""} — ${r.dep}${r.status !== "active" ? ` (${r.status === "paused" ? "en pausa" : "inactivo"})` : ""}`).join("\n")}`);
   }
   private async pending(c: AccessibleCompany) {
     const t = await this.db.query("SELECT t.id,t.title,t.status,e.name en FROM tasks t JOIN employees e ON e.id=t.employee_id WHERE t.company_id=$1 AND t.status IN ('requested','in_progress','awaiting_approval') ORDER BY t.created_at DESC LIMIT 8", [c.id]);
@@ -267,7 +267,7 @@ class Session {
       await this.db.query("UPDATE channel_messages SET task_id=$2, company_id=$3, agency_id=$4 WHERE id=$1", [this.rowId, taskId, c.id, c.agencyId]);
       await enqueue(this.db, "run_task", { taskId, identityId: this.id.id }, { dedupeKey: `run_task:${taskId}` });
       if (this.id.active_company_id !== c.id) await this.setActive(c); // el contexto sigue a la última empresa con la que trabajó
-      this.say(`✅ Recibido. Tarea #${shortId(taskId)} asignada a ${emp.name} (${c.name}). Te aviso cuando esté lista.`);
+      this.say(`✅ Recibido. Tarea #${shortId(taskId)} asignada a ${emp.name}${emp.roleTitle && emp.roleTitle !== emp.name ? `, ${emp.roleTitle}` : ""} (${c.name}). Te aviso cuando esté lista.`);
     } catch (e: any) {
       if (e instanceof DuplicateTaskError) return this.say(`Ya existe una tarea igual (#${shortId(e.existingId)}). No la dupliqué: escribe «estado ${shortId(e.existingId)}».`);
       if (e instanceof z.ZodError) return this.say("Escribe una instrucción para el empleado.");

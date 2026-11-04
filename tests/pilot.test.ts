@@ -13,6 +13,8 @@ import { handleInbound } from "@/server/messaging/coordinator";
 import { processJobs, scanNotifications } from "@/server/messaging/jobs";
 import { InboundMessage } from "@/server/messaging/types";
 import { newDb, FakeAdapter, FakeChannel } from "./helpers";
+import { identityFor } from "@/features/employees/catalog";
+const idn = (k: string) => identityFor(k)!.nombre; // los empleados contratados llevan su nombre propio, no el del puesto
 import { PilotSimProvider } from "../scripts/pilot/sim_provider";
 
 let db: Db, A: AgencyActor, owner: Actor, companyId: string, team: Record<string, string>, connector: FakeAdapter;
@@ -91,7 +93,7 @@ describe("piloto completo: automatización → delegación → aprobación", () 
   it("5-6-7 · el programador ejecuta la cadena completa y deja la solicitud pendiente SIN comprar nada", async () => {
     const sim = await runAutomation();
     const tasks = await listTasks(db, owner); expect(tasks.length).toBe(3);
-    const byRole = Object.fromEntries(tasks.map((t: any) => [t.employee_name, t])); const root = byRole["Controlador de inventario"], mid = byRole["Analista de proveedores"], last = byRole["Supervisor general de agentes"];
+    const byRole = Object.fromEntries(tasks.map((t: any) => [t.employee_name, t])); const root = byRole[idn("controlador-inventario")], mid = byRole[idn("analista-proveedores")], last = byRole[idn("supervisor-general")];
     expect(root.depth).toBe(0); expect(mid.parent_task_id).toBe(root.id); expect(mid.depth).toBe(1); expect(last.parent_task_id).toBe(mid.id); expect(last.depth).toBe(2);
     expect([root.status, mid.status, last.status]).toEqual(["completed", "completed", "awaiting_approval"]);
     expect(sim.calls.map((c) => c.tool).filter(Boolean)).toEqual(["inventario__leer_inventario", "inventario__calcular_resurtido", "delegate_task", "inventario__calcular_resurtido", "inventario__guardar_borrador_resurtido", "delegate_task", "inventario__solicitar_resurtido"]);
@@ -102,7 +104,7 @@ describe("piloto completo: automatización → delegación → aprobación", () 
     expect((await db.query("SELECT status FROM automation_runs"))[0].status).toBe("completed");
   });
   it("la tarea delegada recibe el contexto del traspaso con los datos reales", async () => {
-    await runAutomation(); const mid: any = (await listTasks(db, owner)).find((t: any) => t.employee_name === "Analista de proveedores");
+    await runAutomation(); const mid: any = (await listTasks(db, owner)).find((t: any) => t.employee_name === idn("analista-proveedores"));
     const ctx = (await getTask(db, owner, mid.id))!.task.context as string; expect(ctx).toMatch(/3 productos bajo el mínimo/); expect(ctx).toMatch(/66 unidades/); expect(ctx).toMatch(/Maceta de barro 20 cm \(4\/10\)/);
   });
   it("7 · aprobar: el borrador queda «aprobado, sin enviar», con evidencia, y la tarea termina", async () => {

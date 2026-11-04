@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AppShell, Badge, Kpi, PageHead, NavSection } from "@/components/shell/AppShell";
+import { profileFor } from "@/features/employees/catalog";
+import { EmployeeCard } from "@/features/employees/components/EmployeeCard";
 import { Icon, IconName } from "@/components/Icon";
 import { MenuButton } from "@/lib/guide";
 import { DemoNewOffice } from "@/components/shell/DemoNewOffice";
@@ -43,7 +45,7 @@ export default async function Vista({ params }: { params: Promise<{ vista: strin
       <div className="grid" data-testid="demo-oficinas">{DEMO_OFFICES.map((o) => <div className="card" key={o.id}><div className="row" style={{ justifyContent: "space-between" }}><h3>{o.name}</h3>{ESTADO(o.status)}</div><p className="muted">{o.business} · Plan {o.plan} · {o.employees} empleado(s)</p><div className="row"><Off why="En la demostración no se puede entrar a oficinas.">Entrar</Off><Off>{o.status === "activa" ? "Pausar" : "Reanudar"}</Off><Off>Cancelar al final del periodo</Off></div></div>)}</div>
       <p className="muted" style={{ marginTop: 16 }}>Pausar o cancelar una oficina no afecta a las demás. Tus datos nunca se borran.</p></>)}
     {slug === "empleados" && (<><PageHead title="Empleados IA" sub="Los puestos que puedes contratar. Cada uno explica qué hace."><Link className="btn ghost" href="/panel-demo/departamentos">Ver departamentos</Link></PageHead>
-      <div className="lp-grid c3" data-testid="demo-empleados">{emps.map((e) => <div className="card" key={e.key}><div className="row" style={{ justifyContent: "space-between" }}><b>{e.name}</b><Badge>Puesto del catálogo</Badge></div><p className="muted" style={{ fontSize: ".88rem" }}>{e.que}</p><Badge>{e.department}</Badge></div>)}</div>
+      <div className="lp-grid c3" data-testid="demo-empleados">{emps.map((e) => { const p = profileFor(e.key); return p ? <EmployeeCard key={e.key} p={p} href={`/panel-demo/empleados/${e.key}`} /> : null; })}</div>
       <div className="tip" role="note" style={{ marginTop: 16 }}><Icon name="shield" size={18} /><span>Un empleado empieza a trabajar cuando tu oficina tiene la IA activa y conectas tus aplicaciones. Antes de publicar, enviar o gastar, siempre te pide permiso.</span></div></>)}
     {slug === "departamentos" && (<><PageHead title="Departamentos" sub="Tu equipo se organiza por área. Se crean solos al contratar."/>
       <div className="lp-grid c3" data-testid="demo-departamentos">{depts.map((d) => <div className="card" key={d.key}><div className="row" style={{ justifyContent: "space-between" }}><h3>{d.name}</h3><Badge>{d.count} puestos</Badge></div><p className="muted" style={{ fontSize: ".86rem" }}>{EMPLOYEES.filter((e) => e.department === d.key).slice(0, 3).map((e) => e.name).join(", ")}…</p></div>)}</div></>)}

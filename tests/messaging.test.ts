@@ -136,7 +136,7 @@ describe("5-6-7 · tarea desde el chat: creación, resultado y error", () => {
   it("identifica empresa y agente, registra la tarea en el MOTOR EXISTENTE y devuelve el resultado", async () => {
     await link(A, "telegram", "100");
     await say("telegram", "100", ask); await pump();
-    expect(lastTo(tg, "100")).toMatch(/Recibido\. Tarea #\w{8} asignada a Analista de competidores \(Alquimia Luna\)/);
+    expect(lastTo(tg, "100")).toMatch(/Recibido\. Tarea #\w{8} asignada a [^\n]*Analista de competidores[^\n]* \(Alquimia Luna\)/);
     const t = (await db.query("SELECT t.*, e.role_title FROM tasks t JOIN employees e ON e.id=t.employee_id"))[0];
     expect(t.role_title).toBe("Analista de competidores"); expect(t.company_id).toBe(cA1); expect(t.created_by).toBe("canal:telegram"); expect(t.status).toBe("requested");
     const ct = (await db.query("SELECT * FROM channel_tasks"))[0]; expect(ct.task_id).toBe(t.id); expect(ct.company_id).toBe(cA1);
