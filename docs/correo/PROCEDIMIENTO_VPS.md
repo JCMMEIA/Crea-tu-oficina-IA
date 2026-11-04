@@ -1,6 +1,6 @@
 # Procedimiento en el VPS: configurar el correo (Resend) sin tocar Stripe ni precios
 
-Script: `deploy/convivencia/configurar_correo.sh` (SHA-256 `10fdd229648a3373157b5699ad25439f4df71d681d4c854c9d340a52d6cfa3d4`). Solo modifica estas variables: `RESEND_API_KEY`, `MAIL_FROM`, `NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `PLATFORM_ADMIN_EMAILS` (solo AGREGA), `RESEND_WEBHOOK_SECRET`.
+Script: `deploy/convivencia/configurar_correo.sh` (SHA-256 `60e3d8f6cddd279d63b4bec6f61ed146a7f054034616fe0cc43fdb7999025cdf`). Solo modifica estas variables: `RESEND_API_KEY`, `MAIL_FROM`, `NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `PLATFORM_ADMIN_EMAILS` (solo AGREGA), `RESEND_WEBHOOK_SECRET`.
 No toca Stripe, precios, Anthropic, base de datos, `BILLING_ENABLED` ni `PUBLIC_SIGNUP`; lo comprueba con una huella antes/después y restaura el respaldo si algo cambia. No imprime secretos ni enlaces. Reinicia solo `crea-oficina` y solo si escribes SI.
 
 ## Qué necesita TU intervención (nadie más puede hacerlo)
@@ -16,7 +16,7 @@ No toca Stripe, precios, Anthropic, base de datos, `BILLING_ENABLED` ni `PUBLIC_
 1. **Obtén el script en el VPS** (como root). Opción A, si el repositorio es público y la rama está subida:
    ```
    curl -fsSL https://raw.githubusercontent.com/JCMMEIA/Crea-tu-oficina-IA/claude/configurar-correo/deploy/convivencia/configurar_correo.sh -o /root/configurar_correo.sh
-   echo "10fdd229648a3373157b5699ad25439f4df71d681d4c854c9d340a52d6cfa3d4  /root/configurar_correo.sh" | sha256sum -c -
+   echo "60e3d8f6cddd279d63b4bec6f61ed146a7f054034616fe0cc43fdb7999025cdf  /root/configurar_correo.sh" | sha256sum -c -
    ```
    Debe decir `OK`. Si dice FAILED, no lo ejecutes. Necesita además `lib.sh`; si lo ejecutas desde la carpeta del repo instalado (`/opt/crea-oficina/app/deploy/convivencia`) ya está. Opción B: pega el archivo con `nano` dentro de esa carpeta.
 2. **Simulacro** (no cambia nada, solo dice qué está definido):
@@ -47,3 +47,6 @@ El respaldo queda en `/var/backups/crea-oficina/env.correo.<fecha>.bak` (permiso
 
 ## Qué NO hace este procedimiento
 No activa pagos ni registros públicos, no cambia precios, no toca OpenClaw ni reinicia el servidor, no despliega código nuevo. El panel `/admin/correos` y el comando `correo:diagnostico` existen **si** el VPS ya tiene la versión actual de la aplicación; si no, primero hay que actualizarla con `actualizar_convivencia.sh` (con respaldo y reversión) tras tu autorización.
+
+## Pruebas del configurador
+`tests/configurar_correo.test.ts` (se ejecuta con `npm test`; requiere root, por eso se omite en entornos sin root): el simulacro no cambia nada; aplicar modifica solo variables de correo y deja idénticas Stripe, Anthropic, la base de datos y el resto; el operador se agrega sin reemplazar ni duplicar; la salida no contiene ningún secreto ni correo completo; las claves con formato inválido se rechazan; sin dominio verificado no se escribe `MAIL_FROM`; el respaldo queda con permiso 600; y una revisión estática garantiza que el script no pueda escribir variables de Stripe, precios, Anthropic o base de datos. **Lo que estas pruebas no cubren:** el reinicio de `systemd`, la llamada real a Resend y la entrega al buzón; eso solo se verifica en el VPS.

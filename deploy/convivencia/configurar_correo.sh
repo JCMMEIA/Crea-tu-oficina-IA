@@ -4,7 +4,7 @@
 #   sudo bash configurar_correo.sh --aplicar   → pregunta cada dato; Enter = no cambiar; respalda antes y revierte si falla
 # Nunca imprime claves, secretos, correos de operador completos ni enlaces. Reinicia SOLO crea-oficina, y solo si tú escribes SI.
 set -uo pipefail; AQUI="$(cd "$(dirname "$0")" && pwd)"; cd /; . "$AQUI/lib.sh"
-ENV_FILE="${CREA_ENV_FILE:-$ENV_FILE}"; SITE="https://app.mmeia.tech"; APLICAR=0; [ "${1:-}" = "--aplicar" ] && APLICAR=1
+ENV_FILE="${CREA_ENV_FILE:-$ENV_FILE}"; BACKUPS="${CREA_BACKUPS:-$BACKUPS}"; SITE="https://app.mmeia.tech"; APLICAR=0; [ "${1:-}" = "--aplicar" ] && APLICAR=1
 [ "$(id -u)" = 0 ] || die "Ejecútalo como root:  sudo bash $0 [--aplicar]"; [ -f "$ENV_FILE" ] || die "No existe $ENV_FILE (¿está instalada la aplicación?)."
 val() { grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- | sed -E 's/^"(.*)"$/\1/'; }
 def() { [ -n "$(val "$1")" ] && echo "definida" || echo "NO definida"; }
