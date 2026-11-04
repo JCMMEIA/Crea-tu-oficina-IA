@@ -1,4 +1,5 @@
 import { Db } from "../db";
+import { accountOf, quotaStatus } from "../ai/quota";
 
 /** Consumo y límites, separados: TOKENS consumidos · COSTO estimado (USD, con la tarifa configurada) · LÍMITES (presupuesto mensual y topes de ejecución). Todo por company_id. */
 export interface Limits { budgetUsd: number; spentUsd: number; pct: number; level: "ok" | "aviso" | "bloqueado"; maxRunsPerHour: number; runsLastHour: number; blockedReason: string | null }
@@ -12,6 +13,7 @@ export async function limitStatus(db: Db, companyId: string): Promise<Limits> {
   if (ag && ag.status === "pausada") reason = "Esta oficina está pausada. Reanúdala desde «Mis oficinas» para volver a ejecutar tareas.";
   else if (ag && ag.status !== "activa") reason = "Esta oficina está cancelada: no se pueden ejecutar tareas.";
   else if (spent >= budget) reason = `Alcanzaste el límite mensual de uso de IA de esta oficina (${spent.toFixed(2)} de ${budget.toFixed(2)} USD). No se ejecutarán nuevas tareas hasta el próximo mes o hasta que se amplíe el límite.`;
+  else if ((await quotaStatus(db, await accountOf(db, companyId))).level === "bloqueado") reason = "Alcanzaste la cuota mensual de IA de tu plan (compartida entre tus oficinas). Las nuevas tareas se reanudan el próximo mes o al ampliar tu plan.";
   else if (runs >= Number(c.max_runs_per_hour)) reason = "Alcanzaste el límite de ejecuciones por hora. Espera un rato e inténtalo de nuevo.";
   else if (ag) { const as = Number((await db.query("SELECT coalesce(sum(u.cost_usd),0) s FROM usage_events u JOIN companies c ON c.id=u.company_id WHERE c.agency_id=$1 AND u.created_at >= date_trunc('month', now())", [ag.id]))[0].s); if (as >= Number(ag.monthly_budget_usd)) reason = "La oficina completa alcanzó su límite mensual de uso de IA. No se ejecutarán nuevas tareas hasta que se amplíe."; }
   return { budgetUsd: budget, spentUsd: spent, pct, level: reason ? "bloqueado" : pct >= 0.8 ? "aviso" : "ok", maxRunsPerHour: Number(c.max_runs_per_hour), runsLastHour: runs, blockedReason: reason };

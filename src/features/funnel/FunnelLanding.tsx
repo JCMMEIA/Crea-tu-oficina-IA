@@ -8,6 +8,7 @@ import { AVISOS_COMPRA } from "./config/content";
 import { TAREAS } from "./config/tareas";
 import { LandingHeader } from "./components/Header";
 import { Hero } from "./components/Hero";
+import { PathsSection } from "./components/AffiliatePaths";
 import { Problem } from "./components/Problem";
 import { ProductDemo } from "./components/ProductDemo";
 import { EmployeesSection } from "./components/EmployeesSection";
@@ -33,7 +34,7 @@ export async function FunnelLanding({ compra, demo }: { compra?: string; demo?: 
   return (<div className="lp fx"><Attribution track="visita" /><LandingHeader canBuy={open} />
     <main id="contenido" className="lp-main">
       {compra && AVISOS_COMPRA[compra] && <div className="lp-wrap"><div className="tip lp-alert" role="alert" data-testid="buy-notice"><Icon name="help" size={18} /><span>{AVISOS_COMPRA[compra]}</span></div></div>}
-      <Hero open={open} price={price} /><Problem /><ProductDemo /><EmployeesSection /><BrainSection /><TasksSection /><WorkflowsSection /><ResultsSection quien={quien} /><HowItWorks /><Comparison />
+      <Hero open={open} price={price} /><PathsSection open={open} /><Problem /><ProductDemo /><EmployeesSection /><BrainSection /><TasksSection /><WorkflowsSection /><ResultsSection quien={quien} /><HowItWorks /><Comparison />
       <Plans open={open} /><Offer open={open} plan={plan} price={price} /><Trust preview={demo === "testimonios"} /><Faq plan={plan} /><FinalCta open={open} />
     </main><Footer /></div>);
 }

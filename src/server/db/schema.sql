@@ -332,3 +332,21 @@ CREATE TABLE IF NOT EXISTS ai_calls (
 CREATE INDEX IF NOT EXISTS ai_calls_account_idx ON ai_calls(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ai_calls_task_idx ON ai_calls(task_id);
 CREATE TABLE IF NOT EXISTS ai_alerts (account_id text NOT NULL, period date NOT NULL, threshold int NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period, threshold));
+
+-- ===== Programa de afiliados (por invitación o solicitud aprobada) =====
+ALTER TABLE checkout_intents ADD COLUMN IF NOT EXISTS affiliate_code text;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS affiliate_id text;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS affiliate_flag text;
+CREATE TABLE IF NOT EXISTS affiliates (
+  id text PRIMARY KEY, email text NOT NULL UNIQUE, name text NOT NULL DEFAULT '', code text UNIQUE, status text NOT NULL DEFAULT 'solicitada' CHECK (status IN ('solicitada','aprobada','suspendida','rechazada')),
+  channel text NOT NULL DEFAULT '', terms_version text, terms_accepted_at timestamptz, invited boolean NOT NULL DEFAULT false, note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), approved_at timestamptz);
+CREATE TABLE IF NOT EXISTS affiliate_payouts (
+  id text PRIMARY KEY, affiliate_id text NOT NULL REFERENCES affiliates(id) ON DELETE CASCADE, period date NOT NULL, total_cents bigint NOT NULL, currency text NOT NULL DEFAULT 'mxn',
+  status text NOT NULL DEFAULT 'borrador' CHECK (status IN ('borrador','pagado')), reference text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), paid_at timestamptz, UNIQUE (affiliate_id, period));
+CREATE TABLE IF NOT EXISTS affiliate_commissions (
+  id text PRIMARY KEY, affiliate_id text NOT NULL REFERENCES affiliates(id) ON DELETE CASCADE, order_id text, invoice_id text, month_index int NOT NULL DEFAULT 1,
+  net_cents bigint NOT NULL, rate numeric NOT NULL, amount_cents bigint NOT NULL, currency text NOT NULL DEFAULT 'mxn',
+  kind text NOT NULL DEFAULT 'comision' CHECK (kind IN ('comision','ajuste')), status text NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente','aprobada','pagada','revertida')),
+  reason text NOT NULL DEFAULT '', payout_id text REFERENCES affiliate_payouts(id) ON DELETE SET NULL, created_at timestamptz NOT NULL DEFAULT now(), approved_at timestamptz);
+CREATE UNIQUE INDEX IF NOT EXISTS affiliate_commissions_invoice_idx ON affiliate_commissions(invoice_id, kind) WHERE invoice_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS affiliate_commissions_aff_idx ON affiliate_commissions(affiliate_id, created_at DESC);

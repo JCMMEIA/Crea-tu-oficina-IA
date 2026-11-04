@@ -3,6 +3,7 @@ import { getPaymentProvider } from "@/server/commercial/billing";
 import { attachSession, createIntent } from "@/server/commerce/orders";
 import { offerPlan, purchasesOpen } from "@/server/commerce/gate";
 import { deriveSource, pickUtm } from "@/server/leads";
+import { cookies } from "next/headers";
 
 /** «Crear mi oficina IA»: crea la intención de compra (sin cuenta) y redirige DIRECTO al pago de Stripe. Si la tienda no está lista, vuelve a la landing con aviso honesto. */
 export async function GET(req: Request) {
@@ -12,7 +13,8 @@ export async function GET(req: Request) {
     const db = await getDb(); if (!(await purchasesOpen(db)).open) return back("cerrada");
     const p = getPaymentProvider(); if (!p?.createPublicCheckout) return back("cerrada");
     const utm = pickUtm(Object.fromEntries(u.searchParams)); const source = (u.searchParams.get("fuente") || "").toLowerCase().slice(0, 60) || deriveSource(utm);
-    const intentId = await createIntent(db, { plan: offerPlan(), kind: "primera", source, utm });
+    const ref = (await cookies()).get("cto_ref")?.value ?? null; // código de afiliado guardado por /r/<código>
+    const intentId = await createIntent(db, { plan: offerPlan(), kind: "primera", source, utm, affiliateCode: ref });
     const c = await p.createPublicCheckout({ intentId, plan: offerPlan(), successUrl: `${site}/comprar/gracias`, cancelUrl: `${site}/?compra=cancelada#oferta` });
     await attachSession(db, intentId, c.sessionId);
     return Response.redirect(c.url, 303);
