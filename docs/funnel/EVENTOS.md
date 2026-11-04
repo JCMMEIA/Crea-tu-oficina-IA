@@ -13,3 +13,6 @@ Definidos en `tracking/events.ts` (una sola fuente):
 | oficina activada | empleado + tarea completada | `agencies/tasks` |
 
 Los eventos de navegador son anónimos (sin IP ni identificadores); los de compra salen del servidor, no del navegador, por eso no dependen del consentimiento.
+
+## Identificadores de CTA de la landing v2 (`props.cta` de `cta_click`)
+`comprar-hero|header|oferta|final` (compra) · `plan-starter|plan-pro|plan-business` (selección de plan) · `empleado-conocer` (botón «Conocer empleado») · `tarea-explorada` (tras explorar una demostración). Definidos en `tracking/events.ts`.
