@@ -21,7 +21,11 @@
     "tienda:estado": "tsx scripts/tienda_estado.ts",
     "correo:diagnostico": "tsx scripts/correo_diagnostico.ts",
     "correo:procesar": "tsx scripts/correo_procesar.ts",
-    "tareas:verificar": "tsx scripts/tareas_verificar.ts"
+    "tareas:verificar": "tsx scripts/tareas_verificar.ts",
+    "ia:preparado": "tsx scripts/ia/preparado.ts",
+    "ia:catalogo": "tsx scripts/ia/catalogo_openrouter.ts",
+    "ia:humo": "tsx scripts/ia/prueba_humo.ts",
+    "ia:evaluar": "tsx scripts/ia/evaluar.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
