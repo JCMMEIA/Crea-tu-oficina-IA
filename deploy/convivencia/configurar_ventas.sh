@@ -11,8 +11,9 @@ ask_secret() { local k="$1" p="$2" re="$3" v; read -r -s -p "$p (no se verá al 
 titulo "Precio (pesos mexicanos por mes)"; ask_plain PLAN_PRICE_MXN_EMPRENDEDOR "Precio mensual de la oficina IA en MXN (ej. 899):" '^[0-9]+(\.[0-9]{1,2})?$'
 titulo "Stripe (SOLO modo pruebas)"; ask_secret STRIPE_SECRET_KEY "Clave secreta de PRUEBAS de Stripe (empieza con sk_test_):" '^sk_test_[A-Za-z0-9]+$'; ask_secret STRIPE_WEBHOOK_SECRET "Secreto del webhook (empieza con whsec_):" '^whsec_[A-Za-z0-9]+$'
 titulo "Correo (Resend)"; ask_secret RESEND_API_KEY "Clave de Resend (empieza con re_):" '^re_[A-Za-z0-9_]+$'
-read -r -p "Remitente verificado (ej. Crea tu Oficina IA <hola@mmeia.tech>): " mf
+read -r -p "Remitente de TU dominio verificado en Resend (recomendado: Crea tu Oficina IA <acceso@mmeia.tech>): " mf
 if [ -n "$mf" ]; then if [[ "$mf" =~ ^[^\"\$\`\\]{3,120}$ ]]; then env_set "$ENV_FILE" MAIL_FROM "\"$mf\""; ok "MAIL_FROM guardado (entre comillas, porque lleva espacios)"; CAMBIOS=1; else bad "Remitente no válido. No se cambió."; fi; fi
+ask_secret RESEND_WEBHOOK_SECRET "Secreto del webhook de Resend para confirmar ENTREGAS (empieza con whsec_; opcional, Enter = omitir):" '^whsec_[A-Za-z0-9+/=]+$'
 titulo "IA (Anthropic)"; ask_secret ANTHROPIC_API_KEY "Clave de Anthropic (empieza con sk-ant-):" '^sk-ant-[A-Za-z0-9_-]+$'; ask_plain MODEL_INPUT_USD_PER_MTOK "Dólares por millón de tokens de ENTRADA (de la página de precios de Anthropic):" '^[0-9]+(\.[0-9]+)?$'; ask_plain MODEL_OUTPUT_USD_PER_MTOK "Dólares por millón de tokens de SALIDA:" '^[0-9]+(\.[0-9]+)?$'
 titulo "Cobros"; read -r -p "Escribe ACTIVAR PRUEBAS para encender los cobros en MODO PRUEBA (Enter = no cambiar): " a
 [ "$a" = "ACTIVAR PRUEBAS" ] && { grep -q '^STRIPE_SECRET_KEY=sk_test_' "$ENV_FILE" || die "Primero guarda una clave sk_test_ de Stripe."; env_set "$ENV_FILE" BILLING_ENABLED true; ok "BILLING_ENABLED=true (solo con claves de PRUEBA: Stripe real está bloqueado)"; CAMBIOS=1; }

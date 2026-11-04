@@ -8,7 +8,7 @@ import { resolveSupport } from "@/server/commercial/support";
 import { addAdSpend } from "@/server/commerce/funnel";
 import { verifyAi } from "@/server/commerce/gate";
 import { grantRight } from "@/server/commerce/offices";
-import { processEmails } from "@/server/commerce/mail";
+import { processEmails, retryAllFailed, retryEmail } from "@/server/commerce/mail";
 import { assertOperator } from "@/server/commercial/admin";
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "");
@@ -31,3 +31,6 @@ export async function adSpendAction(f: FormData) { const { db, op } = await requ
 export async function verifyAiAction() { const { db, op } = await requireOperator(); assertOperator(op); const r = await verifyAi(db); await run(`/admin/conversion?${r.ok ? "ok" : "error"}=${encodeURIComponent(r.detail)}`, async () => {}); }
 export async function grantRightAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/conversion", async () => { assertOperator(op); await grantRight(db, s(f, "email"), s(f, "plan") || "emprendedor"); }); }
 export async function sendEmailsAction() { const { db, op } = await requireOperator(); await run("/admin/conversion", async () => { assertOperator(op); await processEmails(db); }); }
+export async function retryEmailAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/correos", async () => { assertOperator(op); if (!(await retryEmail(db, s(f, "id")))) throw new Error("Ese correo ya no se puede reintentar (máximo 3 reintentos manuales)."); await processEmails(db); }); }
+export async function retryFailedAction() { const { db, op } = await requireOperator(); await run("/admin/correos", async () => { assertOperator(op); await retryAllFailed(db); await processEmails(db); }); }
+export async function processEmailsAction() { const { db, op } = await requireOperator(); await run("/admin/correos", async () => { assertOperator(op); await processEmails(db); }); }

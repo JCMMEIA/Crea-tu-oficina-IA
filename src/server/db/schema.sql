@@ -275,3 +275,12 @@ CREATE TABLE IF NOT EXISTS emails (
   attempts int NOT NULL DEFAULT 0, retry_at timestamptz NOT NULL DEFAULT now(), last_error text, dedupe_key text UNIQUE, provider_id text, created_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz);
 CREATE TABLE IF NOT EXISTS system_checks (name text PRIMARY KEY, ok boolean NOT NULL, detail text NOT NULL DEFAULT '', checked_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS ad_spend (id text PRIMARY KEY, day date NOT NULL, source text NOT NULL DEFAULT 'meta', amount_mxn numeric NOT NULL CHECK (amount_mxn >= 0), note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());
+
+-- === Correos: estado de entrega real (webhook del proveedor), diagnóstico y reintentos manuales controlados ===
+ALTER TABLE emails ADD COLUMN IF NOT EXISTS provider_status int;
+ALTER TABLE emails ADD COLUMN IF NOT EXISTS delivery_status text;       -- sent | delivered | delivery_delayed | bounced | complained (según el proveedor)
+ALTER TABLE emails ADD COLUMN IF NOT EXISTS delivery_at timestamptz;
+ALTER TABLE emails ADD COLUMN IF NOT EXISTS delivery_detail text;
+ALTER TABLE emails ADD COLUMN IF NOT EXISTS manual_retries int NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS emails_provider_idx ON emails(provider_id);
+CREATE INDEX IF NOT EXISTS emails_status_idx ON emails(status, created_at);

@@ -18,7 +18,9 @@
     "preflight": "tsx scripts/preflight.ts",
     "ai:verify": "tsx scripts/ai_verify.ts",
     "admin:link": "tsx scripts/admin_link.ts",
-    "tienda:estado": "tsx scripts/tienda_estado.ts"
+    "tienda:estado": "tsx scripts/tienda_estado.ts",
+    "correo:diagnostico": "tsx scripts/correo_diagnostico.ts",
+    "correo:procesar": "tsx scripts/correo_procesar.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

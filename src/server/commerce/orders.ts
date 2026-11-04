@@ -79,6 +79,7 @@ export async function deliverPaidCheckout(db: Db, d: PaidCheckout): Promise<{ ag
     await t.query("INSERT INTO office_rights(id,user_id,email,plan,source,order_id) VALUES($1,$2,$3,$4,'pago',$5) ON CONFLICT (order_id) DO NOTHING", [newId(), userId, email, intent.plan, order.id]);
     const right = (await t.query("SELECT id, agency_id FROM office_rights WHERE order_id=$1", [order.id]))[0];
     const cfg = clean(intent.config);
+    const prior = Number((await t.query<{ n: string }>("SELECT count(*) n FROM agency_members WHERE user_id=$1", [userId]))[0].n); // ¿es su primera oficina?
     const agencyId = right.agency_id ?? await createOfficeFromRight(t, right.id, { userId, name: cfg.officeName, businessType: cfg.businessType, subscriptionId: d.subscriptionId, customerId: d.customerId });
     if (d.subscriptionId) {
       await t.query("INSERT INTO subscriptions(id,agency_id,customer_id,status) VALUES($1,$2,$3,'active') ON CONFLICT (id) DO UPDATE SET agency_id=$2, customer_id=COALESCE($3, subscriptions.customer_id)", [d.subscriptionId, agencyId, d.customerId ?? null]);
@@ -86,7 +87,8 @@ export async function deliverPaidCheckout(db: Db, d: PaidCheckout): Promise<{ ag
     }
     await t.query("UPDATE orders SET status='entregada', agency_id=$2, user_id=$3, delivered_at=now(), last_error=NULL WHERE id=$1", [order.id, agencyId, userId]);
     await t.query("UPDATE checkout_intents SET user_id=COALESCE(user_id,$2) WHERE id=$1", [intent.id, userId]);
-    await queueEmail(t, { to: email, kind: "bienvenida", payload: { userId, agencyId }, dedupeKey: `bienvenida:${order.id}` });
+    await queueEmail(t, { to: email, kind: "compra_confirmada", payload: { orderId: order.id, agencyId }, dedupeKey: `compra:${order.id}` });
+    await queueEmail(t, { to: email, kind: prior === 0 ? "bienvenida" : "oficina_entregada", payload: { userId, agencyId }, dedupeKey: `entrega:${order.id}` });
     return { agencyId, created: true, user: { id: userId, email }, cfg };
   });
   if (out.created) {

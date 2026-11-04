@@ -17,7 +17,12 @@ export async function consumeAccessLink(db: Db, token: string): Promise<{ sessio
   if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) return null;
   const r = await db.query("UPDATE access_links SET used_at=now() WHERE token_hash=$1 AND used_at IS NULL AND expires_at > now() RETURNING user_id, purpose", [sha(token)]);
   if (!r.length) return null;
-  return { session: await startSession(db, r[0].user_id), userId: r[0].user_id, purpose: r[0].purpose };
+  const session = await startSession(db, r[0].user_id);
+  if (r[0].purpose === "acceso") { // aviso de seguridad: alguien inició sesión con un enlace (una vez cada 30 min; la primera entrada tras comprar no lo genera)
+    const u = (await db.query("SELECT email FROM users WHERE id=$1", [r[0].user_id]))[0];
+    if (u) await queueEmail(db, { to: u.email, kind: "seguridad", payload: { evento: "inicio_sesion", cuando: new Date().toISOString() }, dedupeKey: `seg:${r[0].user_id}:${Math.floor(Date.now() / 1_800_000)}` });
+  }
+  return { session, userId: r[0].user_id, purpose: r[0].purpose };
 }
 /**
  * «Recuperar acceso»: responde SIEMPRE lo mismo (no revela si el correo existe). Solo envía si la cuenta existe; tope 5 por hora y correo.

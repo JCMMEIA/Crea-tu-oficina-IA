@@ -33,7 +33,7 @@ describe("entrega automática tras el pago", () => {
     expect((await db.query("SELECT role FROM agency_members"))[0].role).toBe("agency_owner");
     const o = (await db.query("SELECT status,source,agency_id FROM orders"))[0]; expect(o).toMatchObject({ status: "entregada", source: "meta" }); expect(o.agency_id).toBe(ag[0].id);
     const r = (await db.query("SELECT source,agency_id,used_at FROM office_rights"))[0]; expect(r.source).toBe("pago"); expect(r.agency_id).toBe(ag[0].id); expect(r.used_at).toBeTruthy();
-    expect((await db.query("SELECT kind,status FROM emails")).map((e: any) => e.kind + ":" + e.status)).toEqual(["bienvenida:en_cola"]);
+    expect((await db.query("SELECT kind,status FROM emails")).map((e: any) => e.kind + ":" + e.status).sort()).toEqual(["bienvenida:en_cola", "compra_confirmada:en_cola"]);
     // la «contraseña» es inutilizable: no se puede entrar con contraseña
     await expect(login(db, "ana@compra.test", "")).rejects.toThrow(); await expect(login(db, "ana@compra.test", "cualquiera-123")).rejects.toThrow();
   });
@@ -41,7 +41,7 @@ describe("entrega automática tras el pago", () => {
     const i = await createIntent(db, { plan: "emprendedor" }); const ev = paid("cs_2", i);
     await Promise.all([1, 2, 3, 4, 5].map(() => applyCommerceEvent(db, ev).catch(() => "x")));
     await applyCommerceEvent(db, ev);
-    for (const [t, n] of [["agencies", 1], ["users", 1], ["orders", 1], ["office_rights", 1], ["emails", 1], ["agency_members", 1]] as const) expect((await db.query(`SELECT 1 FROM ${t}`)).length, t).toBe(n);
+    for (const [t, n] of [["agencies", 1], ["users", 1], ["orders", 1], ["office_rights", 1], ["emails", 2], ["agency_members", 1]] as const) expect((await db.query(`SELECT 1 FROM ${t}`)).length, t).toBe(n);
   });
   it("solo paga una compra 'paid' de modo suscripción con intención conocida; lo demás se ignora o queda como error visible", async () => {
     const i = await createIntent(db, { plan: "emprendedor" });
@@ -138,24 +138,25 @@ describe("enlaces de acceso (sin registro ni contraseña)", () => {
 describe("correos transaccionales", () => {
   it("el enlace se genera AL ENVIAR y no queda en la base; reintenta si falla; no duplica", async () => {
     await buy("cs_22"); const sent: any[] = []; let fail = true;
-    const prov: MailProvider = { name: "t", send: async (m) => { if (fail) { fail = false; throw new Error("caído"); } sent.push(m); return "id1"; } };
+    const prov: MailProvider = { name: "t", send: async (m) => { if (fail) { fail = false; throw new Error("caído"); } sent.push(m); return "id" + sent.length; } };
     process.env.NEXT_PUBLIC_SITE_URL = "https://app.ejemplo.test";
-    expect(await processEmails(db, prov)).toEqual({ sent: 0, failed: 1 });
-    expect((await db.query("SELECT status,attempts FROM emails"))[0]).toMatchObject({ status: "en_cola", attempts: 1 });
-    expect(await processEmails(db, prov)).toEqual({ sent: 0, failed: 0 }); // aún no toca reintentar (espera)
+    expect(await processEmails(db, prov)).toMatchObject({ sent: 1, failed: 1 }); // 2 correos por compra: uno falla, el otro sale
+    const fallido = (await db.query("SELECT kind,status,attempts FROM emails WHERE status='en_cola'"))[0]; expect(fallido).toMatchObject({ kind: "compra_confirmada", attempts: 1 });
+    expect(await processEmails(db, prov)).toMatchObject({ sent: 0, failed: 0 }); // aún no toca reintentar (espera)
     await db.query("UPDATE emails SET retry_at = now()"); // pasa el tiempo
-    expect(await processEmails(db, prov)).toEqual({ sent: 1, failed: 0 });
-    expect(sent[0].to).toBe("ana@compra.test"); const link = sent[0].text.match(/https:\/\/app\.ejemplo\.test\/acceso\?t=([A-Za-z0-9_-]+)/)![1]; expect(link.length).toBeGreaterThan(30);
+    expect(await processEmails(db, prov)).toMatchObject({ sent: 1, failed: 0 });
+    const w = sent.find((m) => m.subject.includes("está lista"))!; expect(w.to).toBe("ana@compra.test");
+    const link = w.text.match(/https:\/\/app\.ejemplo\.test\/acceso\?t=([A-Za-z0-9_-]+)/)![1]; expect(link.length).toBeGreaterThan(30); expect(w.html).toContain(link);
     expect(JSON.stringify(await db.query("SELECT * FROM emails"))).not.toContain(link); expect((await consumeAccessLink(db, link))?.userId).toBeTruthy();
-    expect(await processEmails(db, prov)).toEqual({ sent: 0, failed: 0 });
+    expect(await processEmails(db, prov)).toMatchObject({ sent: 0, failed: 0 });
   });
   it("dos procesadores simultáneos NO envían el mismo correo dos veces (arrendamiento)", async () => {
     await buy("cs_23"); let enviados = 0; const lento: MailProvider = { name: "t", send: async () => { enviados++; await new Promise((r) => setTimeout(r, 150)); return "id"; } };
     process.env.NEXT_PUBLIC_SITE_URL = "https://app.ejemplo.test";
     await Promise.all([processEmails(db, lento), processEmails(db, lento), processEmails(db, lento)]);
-    expect(enviados).toBe(1); expect((await db.query("SELECT status FROM emails"))[0].status).toBe("enviado");
+    expect(enviados).toBe(2); expect((await db.query("SELECT status FROM emails")).every((r: any) => r.status === "enviado")).toBe(true); // 2 correos por compra, cada uno UNA vez
   });
-  it("sin proveedor de correo no se envía nada y la tienda NO abre", async () => { delete process.env.RESEND_API_KEY; expect(await processEmails(db, null)).toEqual({ sent: 0, failed: 0 }); expect((await purchasesOpen(db)).reasons.join(" ")).toMatch(/correo/i); });
+  it("sin proveedor de correo no se envía nada y la tienda NO abre", async () => { delete process.env.RESEND_API_KEY; expect(await processEmails(db, null)).toMatchObject({ sent: 0, failed: 0 }); expect((await purchasesOpen(db)).reasons.join(" ")).toMatch(/correo/i); });
 });
 
 describe("compuerta de venta: cobros + precio + correo + IA verificada", () => {
