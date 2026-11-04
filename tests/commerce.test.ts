@@ -121,6 +121,12 @@ describe("enlaces de acceso (sin registro ni contraseña)", () => {
     const t2 = await issueAccessLink(db, uid); await db.query("UPDATE access_links SET expires_at = now() - interval '1 minute'"); expect(await consumeAccessLink(db, t2)).toBeNull();
     const t3 = await issueAccessLink(db, uid); const ses = (await consumeAccessLink(db, t3))!; expect((await agencyActorFromToken(db, ses.session))?.agencyId).toBeTruthy();
   });
+  it("los correos de OPERADOR (variable del servidor) inician sesión por enlace aunque aún no tengan cuenta; cualquier otro correo desconocido no crea nada", async () => {
+    process.env.PLATFORM_ADMIN_EMAILS = "jose@ejemplo.test";
+    expect(await requestAccess(db, "intruso@x.test")).toBe(false); expect((await db.query("SELECT 1 FROM users WHERE email='intruso@x.test'")).length).toBe(0);
+    expect(await requestAccess(db, "Jose@Ejemplo.test")).toBe(true); expect((await db.query("SELECT 1 FROM users WHERE email='jose@ejemplo.test'")).length).toBe(1);
+    expect((await db.query("SELECT to_email,kind FROM emails"))[0]).toMatchObject({ to_email: "jose@ejemplo.test", kind: "acceso" });
+  });
   it("recuperar acceso: no revela si el correo existe, tope por hora, y solo se envía a cuentas reales", async () => {
     await buy("cs_21");
     expect(await requestAccess(db, "nadie@x.test")).toBe(false); expect(await requestAccess(db, "ANA@compra.test")).toBe(true);
