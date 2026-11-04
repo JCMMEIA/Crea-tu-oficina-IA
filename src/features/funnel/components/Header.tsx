@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Icon, BrandMark } from "@/components/Icon";
-import { BuyLink } from "@/lib/attribution";
+import { BuyLink } from "../tracking/attribution";
 
 export function LandingHeader({ canBuy }: { canBuy: boolean }) {
   const [open, setOpen] = useState(false);

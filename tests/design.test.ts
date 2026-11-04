@@ -9,7 +9,7 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\
 
 describe("sistema de diseño premium", () => {
   it("la landing, el panel, la demostración y «oficinas» no usan emojis como iconos", () => {
-    const targets = ["src/app/page.tsx", "src/app/(agency)/layout.tsx", "src/app/(agency)/agencia/page.tsx", "src/lib/guide.tsx", ...files("src/components/landing"), ...files("src/components/shell"), ...files("src/app/panel-demo"), ...files("src/app/oficinas"), "src/lib/demo_data.ts"];
+    const targets = ["src/app/page.tsx", ...files("src/features/funnel"), "src/app/(agency)/layout.tsx", "src/app/(agency)/agencia/page.tsx", "src/lib/guide.tsx", ...files("src/components/shell"), ...files("src/app/panel-demo"), ...files("src/app/oficinas"), "src/lib/demo_data.ts"];
     const bad = targets.filter((f) => EMOJI.test(strip(fs.readFileSync(path.join(root, f), "utf8"))));
     expect(bad).toEqual([]);
   });
@@ -22,8 +22,8 @@ describe("sistema de diseño premium", () => {
   it("testimonios: sin testimonios reales la sección se oculta; los que existan deben tener nombre, cargo y texto", () => {
     expect(Array.isArray(TESTIMONIALS)).toBe(true);
     for (const t of TESTIMONIALS) { expect(t.name.length).toBeGreaterThan(1); expect(t.role.length).toBeGreaterThan(1); expect(t.quote.length).toBeGreaterThan(10); }
-    const page = fs.readFileSync(path.join(root, "src/app/page.tsx"), "utf8");
-    expect(page).toMatch(/TESTIMONIALS\.length > 0 \|\| sp\.demo === "testimonios"/);
+    const page = fs.readFileSync(path.join(root, "src/features/funnel/components/Testimonials.tsx"), "utf8");
+    expect(page).toMatch(/!TESTIMONIALS\.length && !preview/);
     expect(page).not.toMatch(/★|⭐|Carlos Méndez|Ana Rivas|Diego Salazar/);
   });
   it("tokens del sistema: paleta, espaciado y tipografía definidos en un solo lugar", () => {

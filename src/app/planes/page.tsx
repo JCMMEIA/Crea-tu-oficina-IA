@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { currentActor } from "@/lib/session";
-import { Attribution, CtaLink } from "@/lib/attribution";
+import { Attribution, CtaLink } from "@/features/funnel/tracking/attribution";
 import { PLAN_BLURB, PLAN_ORDER, PLANS, planPriceInfo, formatPrice } from "@/server/agency/plans";
 import { billingEnabled } from "@/server/commercial/billing";
 

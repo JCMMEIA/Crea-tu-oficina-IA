@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { BUY_CTA, FUNNEL_EVENTS } from "./events";
 
 const KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid"] as const;
 type First = { source: string; landing: string; utm: Record<string, string> };
@@ -13,7 +14,7 @@ function firstTouch(): First {
   return f;
 }
 /** Medición sin cookies: guarda la primera fuente de la visita en esta pestaña y la manda con el formulario. Anónimo: sin IP ni identificadores. */
-export function Attribution({ track }: { track?: "visita" | "plan_visto" }) {
+export function Attribution({ track }: { track?: typeof FUNNEL_EVENTS.visita | typeof FUNNEL_EVENTS.planVisto }) {
   const [f, setF] = useState<First | null>(null);
   useEffect(() => {
     const t = firstTouch(); setF(t);
@@ -26,7 +27,7 @@ export function Attribution({ track }: { track?: "visita" | "plan_visto" }) {
 }
 /** Cuenta un clic en un botón de llamada a la acción (anónimo). */
 export function trackCta(cta: string) {
-  try { const t = JSON.parse(sessionStorage.getItem("cto_first") ?? "{}"); navigator.sendBeacon?.("/api/track", new Blob([JSON.stringify({ name: "cta_click", path: location.pathname, cta, utm: t.utm ?? {}, referrer: document.referrer })], { type: "application/json" })); } catch {}
+  try { const t = JSON.parse(sessionStorage.getItem("cto_first") ?? "{}"); navigator.sendBeacon?.("/api/track", new Blob([JSON.stringify({ name: FUNNEL_EVENTS.clic, path: location.pathname, cta, utm: t.utm ?? {}, referrer: document.referrer })], { type: "application/json" })); } catch {}
 }
 export function CtaLink({ href, cta, className, children, testId }: { href: string; cta: string; className?: string; children: React.ReactNode; testId?: string }) {
   return <a href={href} className={className} data-testid={testId} onClick={() => trackCta(cta)}>{children}</a>;
@@ -35,7 +36,7 @@ export function CtaLink({ href, cta, className, children, testId }: { href: stri
 /** Botón de compra: cuenta el clic y lleva la fuente (utm/fbclid/referencia) al pago para medir de qué anuncio vino cada compra. */
 export function BuyLink({ cta, className, children, testId }: { cta: string; className?: string; children: React.ReactNode; testId?: string }) {
   return <a href="/comprar" className={className} data-testid={testId} onClick={(e) => {
-    trackCta("comprar-" + cta);
+    trackCta(BUY_CTA(cta));
     try { const f = firstTouch(); const q = new URLSearchParams({ fuente: f.source, ...f.utm }); e.currentTarget.href = "/comprar?" + q.toString(); } catch {}
   }}>{children}</a>;
 }

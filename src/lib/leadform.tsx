@@ -1,5 +1,5 @@
 import { leadAction } from "@/app/lead_action";
-import { Attribution } from "@/lib/attribution";
+import { Attribution } from "@/features/funnel/tracking/attribution";
 import { INTERESTS } from "@/server/leads";
 
 /** Un solo formulario para dos intenciones: «acceso» (lista de espera) y «demo» (pedir demostración, con más datos). */

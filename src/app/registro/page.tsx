@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { agencySignupAction } from "../agency_actions";
 import { Flash, Help } from "@/lib/ui";
-import { Attribution } from "@/lib/attribution";
+import { Attribution } from "@/features/funnel/tracking/attribution";
 import { isPlanKey } from "@/server/agency/plans";
 export const metadata = { title: "Crea tu negocio — Crea tu Oficina IA" };
 export default async function Registro({ searchParams }: { searchParams: Promise<{ error?: string; plan?: string }> }) {
