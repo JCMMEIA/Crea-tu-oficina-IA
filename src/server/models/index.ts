@@ -1,11 +1,14 @@
+import { createRoutedProvider } from "../ai/router";
 export interface ToolDef { name: string; description: string; input_schema: Record<string, unknown> }
 export interface ToolCall { id: string; name: string; input: Record<string, unknown> }
 export type Msg =
   | { role: "user"; content: string }
   | { role: "assistant"; text: string; toolCalls: ToolCall[] }
   | { role: "tool"; results: { id: string; content: string; isError?: boolean }[] };
-export interface CompleteRequest { system: string; messages: Msg[]; tools: ToolDef[]; maxTokens: number; signal?: AbortSignal }
-export interface CompleteResult { text: string; toolCalls: ToolCall[]; inputTokens: number; outputTokens: number }
+/** `meta` lo llena el motor de tareas para que el router decida (nivel, sensibilidad, validaciones). Los proveedores directos lo ignoran. */
+export interface CompleteRequest { system: string; messages: Msg[]; tools: ToolDef[]; maxTokens: number; signal?: AbortSignal; meta?: import("../ai/classify").TaskMeta }
+/** `costUsd`/`model`/`provider` los llena el router con lo REAL de la llamada; sin ellos el motor calcula el costo con la tarifa del proveedor. */
+export interface CompleteResult { text: string; toolCalls: ToolCall[]; inputTokens: number; outputTokens: number; costUsd?: number; model?: string; provider?: string }
 
 export interface ModelProvider {
   id: string;
@@ -49,6 +52,8 @@ export class AnthropicProvider implements ModelProvider {
 }
 
 export function getProvider(): ModelProvider | null {
+  // AI_ROUTER=on → router inteligente (modelos del catálogo /admin/ia). Apagado por defecto: el comportamiento anterior (Anthropic directo) no cambia.
+  if (process.env.AI_ROUTER === "on") return createRoutedProvider();
   const k = process.env.ANTHROPIC_API_KEY;
   return k ? new AnthropicProvider(k) : null;
 }
