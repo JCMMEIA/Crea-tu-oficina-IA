@@ -25,7 +25,7 @@ as_app() { if [ -n "${CREA_SIN_USUARIO:-}" ]; then env "$@"; else runuser -u "$A
 g() { as_app git -C "$APP_DIR" "$@"; }
 val() { grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- | sed -E 's/^"(.*)"$/\1/'; }; def() { [ -n "$(val "$1")" ] && echo "definida" || echo "NO definida"; }
 crit() { if [ "$MODO" = aplicar ]; then die "$*"; else warn "$* (en --aplicar esto detendría la instalación)"; fi; }
-PERMITIDOS='^(src/server/ai/|src/server/models/index\.ts$|src/server/tasks/index\.ts$|src/server/db/(schema\.sql|index\.ts)$|src/app/admin/(ia/page\.tsx|layout\.tsx)$|src/app/admin_actions\.ts$|scripts/ia/(catalogo_openrouter|preparado|prueba_humo)\.ts$|scripts/e2e/compra_directa\.cjs$|deploy/convivencia/(configurar_openrouter|instalar_router)\.sh$|tests/|docs/(ia-router|integracion|incidentes)/|package\.json$|\.env\.example$)'
+PERMITIDOS='^(src/server/ai/|src/server/models/index\.ts$|src/server/tasks/index\.ts$|src/server/db/(schema\.sql|index\.ts)$|src/app/admin/(ia/page\.tsx|layout\.tsx)$|src/app/admin_actions\.ts$|scripts/ia/(catalogo_openrouter|preparado|prueba_humo)\.ts$|scripts/e2e/(compra_directa\.cjs|ia_panel\.(sh|cjs)|seed_ia_panel\.ts)$|deploy/convivencia/(configurar_openrouter|instalar_router)\.sh$|tests/|docs/(ia-router|integracion|incidentes)/|package\.json$|\.env\.example$)'
 TABLAS="ai_models ai_settings ai_plan_limits ai_accounts ai_reservations ai_calls ai_alerts"
 TS="$(date +%Y%m%d-%H%M%S)"; REL=""; PNEXT=""; PNM=""; ACTIVADO=0
 

@@ -21,7 +21,7 @@ const getGuided = (_k: string) => ({ sections: SECTIONS_RESP });
 
 process.env.PLATFORM_ADMIN_EMAILS = "op@ejemplo.test";
 const OP = { userId: "op", email: "op@ejemplo.test" };
-const MODEL = (o: Record<string, unknown>) => ({ provider: "openrouter", max_level: "B", price_in_usd_mtok: 0, price_out_usd_mtok: 0, context_window: 100000, supports_tools: true, supports_json: true, data_policy: "zero_retention", credit_weight: 1, enabled: true, verified: true, notes: "", ...o });
+const MODEL = (o: Record<string, unknown>) => ({ provider: "openrouter", max_level: "B", price_in_usd_mtok: 0, price_out_usd_mtok: 0, context_window: 100000, supports_tools: true, supports_json: true, data_policy: "zero_retention", credit_weight: 1, enabled: true, verified: true, notes: "", ...o, allowed_providers: (o as any).provider === "anthropic" ? [] : ((o as any).allowed_providers ?? ["proveedor-aprobado"]) });
 const FREE = MODEL({ id: "libre", model_id: "vendor/libre:free", label: "Libre", tier: "free", data_policy: "may_train", max_level: "A" });
 const ECO = MODEL({ id: "eco", model_id: "vendor/eco", label: "Económico", tier: "economy", price_in_usd_mtok: 0.2, price_out_usd_mtok: 0.8, max_level: "B", data_policy: "no_training" });
 const PRO = MODEL({ id: "premium", provider: "anthropic", model_id: "claude-x", label: "Premium", tier: "premium", price_in_usd_mtok: 3, price_out_usd_mtok: 15, max_level: "C", data_policy: "zero_retention", credit_weight: 2 });

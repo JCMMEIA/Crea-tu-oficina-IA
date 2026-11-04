@@ -322,3 +322,5 @@ CREATE TABLE IF NOT EXISTS ai_calls (
 CREATE INDEX IF NOT EXISTS ai_calls_account_idx ON ai_calls(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ai_calls_task_idx ON ai_calls(task_id);
 CREATE TABLE IF NOT EXISTS ai_alerts (account_id text NOT NULL, period date NOT NULL, threshold int NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period, threshold));
+-- Router: proveedores aprobados por modelo (se aplican con provider.only en OpenRouter). Aditivo e idempotente.
+ALTER TABLE ai_models ADD COLUMN IF NOT EXISTS allowed_providers text[] NOT NULL DEFAULT '{}';
