@@ -1,0 +1,23 @@
+// Genera la HOJA DE PROPUESTA VISUAL de los 8 retratos prioritarios (sin generar ninguna imagen y sin gastar nada).
+//   npx tsx scripts/employees/propuesta_retratos.ts && NODE_PATH=$(npm root -g) node scripts/employees/propuesta_retratos.cjs
+import fs from "node:fs";
+import { identityFor } from "../../src/features/employees/catalog";
+import { getTemplate } from "../../src/server/catalog/data";
+
+export const PRIORITARIOS = ["creador-anuncios", "estratega-contenido", "guionista-storytelling", "vendedor-conversacional", "creador-presupuestos", "agente-soporte", "gestor-reclamaciones", "seguimiento-posventa"];
+const HUE: Record<string, number> = { marketing: 268, ventas: 212, atencion: 246, finanzas: 170 };
+const VESTUARIO: Record<string, string> = { marketing: "prenda con un acento violeta discreto (camisa, pañuelo o cuello)", ventas: "prenda con un acento azul marino o azul acero", atencion: "prenda con un acento índigo suave", finanzas: "prenda con un acento verde azulado sobrio" };
+const tarea: Record<string, string> = { "creador-anuncios": "Anuncios: 3 propuestas", "estratega-contenido": "Plan de contenido semanal", "guionista-storytelling": "Guion de video corto", "vendedor-conversacional": "Responder a un prospecto", "creador-presupuestos": "Propuesta comercial", "agente-soporte": "Responder la duda de un cliente", "gestor-reclamaciones": "Atender una queja o reseña", "seguimiento-posventa": "Mensaje de seguimiento posventa" };
+const cards = PRIORITARIOS.map((k) => { const i = identityFor(k)!; const t = getTemplate(k)!; const h = HUE[t.department] ?? 260; const ini = i.nombre.split(" ").slice(0, 2).map((w) => w[0]).join("");
+  return `<article style="--h:${h}"><div class="ph"><span>${ini}</span><i>marcador de posición · no es el retrato</i></div><h3>${i.nombre}</h3><p class="pu">${i.puesto} · ${t.department}</p><p><b>Tarea que hace:</b> ${tarea[k]}</p><p><b>Persona ficticia:</b> ${i.retrato.genero === "mujer" ? "mujer" : "hombre"}, ${i.retrato.edad} años, ${i.retrato.rasgos}.</p><p><b>Vestuario:</b> ${VESTUARIO[t.department]}.</p></article>`; }).join("");
+const html = `<!doctype html><html lang="es"><meta charset="utf-8"><title>Propuesta visual · 8 retratos</title><style>
+body{margin:0;padding:36px;background:#060616;color:#f5f4ff;font:15px/1.5 Inter,system-ui,sans-serif}h1{margin:0 0 6px;font-size:28px}.sub{color:#a9a7c6;margin:0 0 22px;max-width:980px}
+.guide{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}.guide div{border:1px solid rgba(148,130,255,.25);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.04);font-size:13px}.guide b{display:block;color:#b9a2ff;margin-bottom:4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}article{border:1px solid rgba(148,130,255,.22);border-radius:16px;padding:14px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+.ph{position:relative;aspect-ratio:1/1;border-radius:12px;display:grid;place-items:center;background:radial-gradient(circle at 50% 38%,hsl(var(--h) 60% 40% / .55),transparent 55%),linear-gradient(160deg,#0d0c26,#2a1a6e 70%,#6d3df0);overflow:hidden;margin-bottom:10px}
+.ph span{width:46%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:34px;background:linear-gradient(135deg,hsl(var(--h) 62% 34%),hsl(calc(var(--h) + 36) 70% 52%));box-shadow:0 0 0 3px rgba(255,255,255,.12)}.ph i{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:10px;color:#cfcdea;font-style:normal;opacity:.8}
+h3{margin:0;font-size:17px}.pu{color:#b9a2ff;margin:2px 0 8px;font-size:13px}article p{margin:4px 0;font-size:12.5px;color:#cfcdea}article b{color:#fff}
+</style><h1>Propuesta visual · 8 empleados prioritarios</h1><p class="sub">Una sola identidad visual para todos: personas ficticias, estudio, luz y fondo idénticos; cambia solo la persona y un acento de vestuario por departamento. Esta hoja es una <b>propuesta</b>: no se generó ninguna imagen.</p>
+<div class="guide"><div><b>Encuadre</b>1:1, busto y hombros, ojos al 40 % desde arriba, rostro ≈ 55 % del alto, centrado.</div><div><b>Luz</b>Principal suave a 45° (izquierda), luz de contorno violeta tenue, relleno neutro.</div><div><b>Fondo</b>Degradado azul noche → violeta, desenfocado y sin objetos; igual en las 8.</div><div><b>Cámara y piel</b>Lente 85 mm, f/2.8, textura natural de piel, sin suavizado de «belleza».</div></div>
+<div class="grid">${cards}</div></html>`;
+fs.mkdirSync("docs/empleados/propuesta", { recursive: true }); fs.writeFileSync("docs/empleados/propuesta/propuesta-8-retratos.html", html); console.log("ok");

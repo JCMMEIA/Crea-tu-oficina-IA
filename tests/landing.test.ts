@@ -18,10 +18,11 @@ const funnelSrc = walk("src/features/funnel").filter((f) => /\.(ts|tsx)$/.test(f
 // Red de seguridad para la integración con el PR #3: solo corre cuando el catálogo de tareas guiadas existe en el árbol (tras fusionarlo).
 const hasCatalog = fs.existsSync(path.join(root, "src/features/tasks/catalog.ts"));
 describe.runIf(hasCatalog)("integración con el catálogo real de tareas guiadas (PR #3)", () => {
-  it("las 8 tareas de la landing coinciden con el catálogo: claves, empleados responsables y secciones", async () => {
-    const { GUIDED_TASKS } = await import("@/features/tasks/catalog");
-    expect(GUIDED_TASKS.map((t: any) => t.key).sort()).toEqual(TAREAS.map((t) => t.key).sort());
-    for (const g of GUIDED_TASKS as any[]) { const l = TAREAS.find((t) => t.key === g.key)!; expect(l.empleadoKey, g.key).toBe(g.employeeKey); expect(l.area, g.key).toBe(g.area); }
+  it("las 8 tareas de la landing coinciden con el catálogo: claves, empleados responsables y áreas", () => {
+    // Se lee como TEXTO (sin importarlo) para que esta rama compile aunque el catálogo aún no exista.
+    const src = fs.readFileSync(path.join(root, "src/features/tasks/catalog.ts"), "utf8"); const g = [...src.matchAll(/\{ key: "([a-z0-9-]+)",[^{}]*?area: "([a-z]+)", employeeKey: "([a-z0-9-]+)"/g)].map((m) => ({ key: m[1], area: m[2], employeeKey: m[3] }));
+    expect(g.map((t) => t.key).sort()).toEqual(TAREAS.map((t) => t.key).sort());
+    for (const c of g) { const l = TAREAS.find((t) => t.key === c.key)!; expect(l.empleadoKey, c.key).toBe(c.employeeKey); expect(l.area, c.key).toBe(c.area); }
   });
   it("las funciones que el PR #3 construye siguen etiquetadas «en revisión» hasta cambiarlas a propósito", () => { for (const k of ["cerebro", "tareasGuiadas", "resultados", "consumo"]) expect(estadoDe(k)).toBe("en_revision"); });
 });

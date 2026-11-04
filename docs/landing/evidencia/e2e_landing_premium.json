@@ -1,5 +1,5 @@
 {
- "fecha": "2026-11-04T15:51:17.441Z",
+ "fecha": "2026-11-04T16:59:40.904Z",
  "resultados": [
   {
    "m": "hero: título exacto pedido",
@@ -26,7 +26,7 @@
    "ok": true
   },
   {
-   "m": "las 15 secciones están en el orden del funnel",
+   "m": "las 15 secciones del rediseño siguen en su orden (más el selector de caminos tras el hero)",
    "ok": true
   },
   {
@@ -35,6 +35,54 @@
   },
   {
    "m": "header fijo al hacer scroll (alto 65px)",
+   "ok": true
+  },
+  {
+   "m": "header: los dos caminos («Quiero mi Oficina IA» / «Quiero ser afiliado»)",
+   "ok": true
+  },
+  {
+   "m": "caminos: «¿Qué quieres hacer con la IA?» con los dos caminos",
+   "ok": true
+  },
+  {
+   "m": "caminos: Oficina → lista de espera (tienda cerrada); afiliado → su página",
+   "ok": true
+  },
+  {
+   "m": "«Nosotros administramos tu oficina»: servicio SECUNDARIO de contacto, no una tercera plataforma",
+   "ok": true
+  },
+  {
+   "m": "disponibilidad: tres grupos claros (disponible / en revisión / próximamente)",
+   "ok": true
+  },
+  {
+   "m": "página de afiliados: programa en preparación y lista de interés",
+   "ok": true
+  },
+  {
+   "m": "afiliados: NO publica comisiones, porcentajes ni precios (programa no implementado)",
+   "ok": true
+  },
+  {
+   "m": "accesibilidad (axe, WCAG 2.1 AA) en afiliados: 0 graves/críticas",
+   "ok": true
+  },
+  {
+   "m": "afiliados: la lista de interés funciona (llega a «gracias»)",
+   "ok": true
+  },
+  {
+   "m": "servicio gestionado: solicitud de diagnóstico, sin paquete ni precio inventados",
+   "ok": true
+  },
+  {
+   "m": "accesibilidad (axe, WCAG 2.1 AA) en servicio gestionado: 0 graves/críticas",
+   "ok": true
+  },
+  {
+   "m": "servicio gestionado: el formulario de diagnóstico funciona",
    "ok": true
   },
   {
@@ -206,11 +254,11 @@
    "ok": true
   },
   {
-   "m": "rendimiento escritorio: LCP 948 ms (<2500), CLS 0.000 (<0.1), 266 KB transferidos en la primera carga",
+   "m": "rendimiento escritorio: LCP 880 ms (<2500), CLS 0.000 (<0.1), 72 KB transferidos en la primera carga",
    "ok": true
   },
   {
-   "m": "rendimiento móvil: LCP 284 ms (<2500), CLS 0.000 (<0.1), 263 KB transferidos en la primera carga",
+   "m": "rendimiento móvil: LCP 620 ms (<2500), CLS 0.000 (<0.1), 437 KB transferidos en la primera carga",
    "ok": true
   },
   {

@@ -8,6 +8,7 @@ Todo el contenido vive en `src/features/funnel/config/`:
 | 8 tareas y sus ejemplos | `tareas.ts` |
 | Diagramas de colaboración | `workflows.ts` |
 | Comparación con un chat de IA | `comparacion.ts` |
+| Los dos caminos, el servicio secundario y las páginas /afiliados y /servicio-gestionado | `caminos.ts` |
 | Planes Starter/Pro/Business: precios, límites, filas | `planes.ts` (`PLANES_APROBADOS`) |
 | Testimonios reales | `src/content/testimonials.ts` (vacío = no se muestra nada inventado) |
 | Empleados (nombre, puesto, especialidad) | `src/features/employees/catalog.ts` |
