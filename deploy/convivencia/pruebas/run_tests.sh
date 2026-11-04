@@ -15,11 +15,21 @@ T="todo 'rm' del instalador/desinstalador apunta solo a rutas propias"
 s3() { local bad=0; while read -r l; do echo "$l" | grep -qE 'crea-oficina|crea_oficina|\$APP_DIR|\$NODE_DIR|\$HOME_DIR|\$valor|\$T"|/var/www/crea-acme|\$BASE' || { echo "   rm sospechoso: $l"; bad=1; }; done < <(grep -hE '\brm +(-[rf]+ +)?' instalar_convivencia.sh desinstalar_convivencia.sh | grep -vE '^\s*#|echo'); return $bad; }; t s3
 T="el instalador no sobrescribe: se niega si ya existen usuario/carpetas/archivos"; s4() { grep -q 'ya existe: no se sobrescribe' instalar_convivencia.sh && grep -q 'El usuario $APP_USER ya existe' instalar_convivencia.sh; }; t s4
 T="usa puerto 3100 solo local y Node privado verificado por huella"; s5() { grep -q 'PORT=3100' lib.sh && grep -q '127.0.0.1 -p \$PORT' instalar_convivencia.sh && grep -q 'sha256sum -c' instalar_convivencia.sh && ! grep -qE 'listen +\$PORT|0\.0\.0\.0' instalar_convivencia.sh; }; t s5
-T="OpenClaw: sin cambios → INTACTO; tras reinicio → lo detecta"
-s6() { local W=/var/tmp/cvtest; mkdir -p $W; (python3 -m http.server 18789 --bind 127.0.0.1 >/dev/null 2>&1 &); sleep 1
-  bash openclaw_check.sh --guardar $W/a.txt >/dev/null || return 1; bash openclaw_check.sh --comparar $W/a.txt >/dev/null || { pkill -f "http.server 18789"; return 1; }
-  pkill -f "http.server 18789"; sleep 1; (python3 -m http.server 18789 --bind 127.0.0.1 >/dev/null 2>&1 &); sleep 1
-  if bash openclaw_check.sh --comparar $W/a.txt >/dev/null; then pkill -f "http.server 18789"; return 1; fi; pkill -f "http.server 18789"; return 0; }; t s6
+T="OpenClaw: sin cambios → INTACTO; tras reinicio → lo detecta (con un servidor de prueba en un puerto LIBRE propio)"
+# CAUSA DEL FALLO ANTERIOR: esta prueba usaba el puerto 18789, que en un VPS real es el de OpenClaw. El servidor de prueba no podía arrancar,
+# se comparaba a OpenClaw consigo mismo y «el reinicio» nunca ocurría. Ahora usa un puerto libre al azar y SOLO mata el proceso que ella misma creó (por PID).
+s6() { local P pid W=/var/tmp/cvtest; mkdir -p $W
+  P="$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')"; export OPENCLAW_PORT="$P"
+  levantar() { python3 -m http.server "$P" --bind 127.0.0.1 >/dev/null 2>&1 & pid=$!; local i; for i in $(seq 1 50); do (exec 3<>/dev/tcp/127.0.0.1/$P) 2>/dev/null && return 0; sleep 0.1; done; return 1; }
+  bajar() { kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; sleep 0.3; }
+  levantar || return 1
+  bash openclaw_check.sh --guardar $W/a.txt >/dev/null || { bajar; return 1; }
+  bash openclaw_check.sh --comparar $W/a.txt >/dev/null || { bajar; return 1; }
+  bajar; levantar || return 1
+  if bash openclaw_check.sh --comparar $W/a.txt >/dev/null; then bajar; return 1; fi
+  bajar; unset OPENCLAW_PORT; return 0; }; t s6
+T="esta batería nunca usa el puerto real de OpenClaw ni mata procesos por nombre"
+s6b() { ! sed -n '/^s6() {/,/t s6$/p' pruebas/run_tests.sh | grep -qE 'pkill|killall|18789'; }; t s6b
 T="simulacro del instalador: termina bien, no cambia nada del sistema"
 s7() { local antes despues; antes="$(ls /opt /etc /var/lib | md5sum; getent passwd | md5sum)"
   OUT="$(bash instalar_convivencia.sh --dominio app.ejemplo.com --correo-cert a@ejemplo.com --correo-admin a@ejemplo.com --permitidos a@ejemplo.com,b@ejemplo.com --contacto a@ejemplo.com 2>&1)" || { echo "$OUT" | tail -15; return 1; }

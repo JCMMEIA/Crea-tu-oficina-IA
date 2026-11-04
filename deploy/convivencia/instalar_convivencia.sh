@@ -13,7 +13,7 @@
 #   · Antes y después de cada paso compara OpenClaw; si algo cambia, SE DETIENE.
 #   · Todo lo que crea queda anotado en /var/lib/crea-oficina/manifest.txt para revertirlo con desinstalar_convivencia.sh.
 # AVISO: no se ha podido ejecutar en tu VPS desde donde se escribió. Las partes de apt, Let's Encrypt y Nginx NO están probadas en un servidor real.
-set -euo pipefail; AQUI="$(cd "$(dirname "$0")" && pwd)"; . "$AQUI/lib.sh"
+set -euo pipefail; AQUI="$(cd "$(dirname "$0")" && pwd)"; . "$AQUI/lib.sh"; cd /   # directorio legible por otros usuarios (git/psql se ejecutan como ctoapp/postgres)
 REPO="${REPO_URL:-https://github.com/JCMMEIA/crea-tu-oficina-ia}"; SOLO_UNIDADES=""
 DOM=""; CORREO_CERT=""; CORREO_ADMIN=""; PERMITIDOS=""; CONTACTO=""
 while [ $# -gt 0 ]; do case "$1" in
@@ -196,6 +196,7 @@ fi; cmpoc "Node privado"
 PSQL="runuser -u postgres -- psql -v ON_ERROR_STOP=1 -qAt"
 paso "4. Base de datos exclusiva" "crea el rol '$DB_ROLE' (sin superusuario) y la base '$DB_NAME' que SOLO ese rol puede abrir. No toca otras bases ni roles."
 if [ "$DRY" = 0 ]; then
+  for i in $(seq 1 60); do runuser -u postgres -- pg_isready -q && break; sleep 1; done; runuser -u postgres -- pg_isready -q || die "PostgreSQL no responde tras instalarse."
   OTRAS="$($PSQL -c "select count(*) from pg_database where datname not in ('postgres','template0','template1')")"; echo "   Bases ajenas ya existentes: $OTRAS"
   DBPW="$(openssl rand -hex 24)"
   echo "CREATE ROLE $DB_ROLE LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD '$DBPW'" | $PSQL
@@ -239,10 +240,10 @@ if [ "$DRY" = 1 ]; then echo "   [SIMULACRO] openssl rand -base64 48 > $ETC/back
 # ================= 6. Código y compilación (con tope de memoria) =================
 paso "6. Bajar el código y compilar con tope de memoria" "clona $REPO en $APP_DIR y compila dentro de un límite de 3 GB de RAM y sin memoria de intercambio: si se pasara, solo se detiene la compilación, nunca OpenClaw."
 run runuser -u "$APP_USER" -- git clone --depth 1 "$REPO" "$APP_DIR"; anotar carpeta "$APP_DIR"
-if [ "$DRY" = 1 ]; then echo "   [SIMULACRO] systemd-run --wait --pipe --collect -p User=$APP_USER -p MemoryMax=3G -p MemorySwapMax=0 -p CPUQuota=100% -p CPUWeight=20 -p Nice=10 → npm ci && npm run build (con el Node privado)"
+if [ "$DRY" = 1 ]; then echo "   [SIMULACRO] systemd-run --wait --pipe --collect -p User=$APP_USER -p MemoryMax=3G -p MemorySwapMax=0 -p CPUQuota=100% -p CPUWeight=20 -p Nice=10 → npm ci --include=dev && npm run build (con el Node privado)"
 else
   systemd-run --wait --pipe --collect -p User="$APP_USER" -p WorkingDirectory="$APP_DIR" -p EnvironmentFile="$ENV_FILE" -p MemoryMax=3G -p MemorySwapMax=0 -p CPUQuota=100% -p CPUWeight=20 -p Nice=10 \
-    -E HOME="$HOME_DIR" -E PATH="$NODE_DIR/bin:/usr/bin:/bin" -E NODE_OPTIONS=--max-old-space-size=2048 /usr/bin/bash -c "npm ci --no-audit --no-fund && npm run build" || die "La compilación falló (o se pasó del tope de memoria). OpenClaw no se afectó."
+    -E HOME="$HOME_DIR" -E PATH="$NODE_DIR/bin:/usr/bin:/bin" -E NODE_OPTIONS=--max-old-space-size=2048 /usr/bin/bash -c "npm ci --include=dev --no-audit --no-fund && npm run build" || die "La compilación falló (o se pasó del tope de memoria). OpenClaw no se afectó."
 fi; cmpoc "compilación"
 
 # ================= 7. Servicio, temporizadores y límites =================
@@ -251,9 +252,9 @@ unidades /etc/systemd/system; for u in crea-oficina.slice crea-oficina.service c
 run systemctl daemon-reload   # solo relee archivos; no reinicia nada
 if [ "$DRY" = 1 ]; then echo "   [SIMULACRO] preflight (npm run preflight) → systemctl enable --now crea-oficina.service crea-tick-*.timer crea-respaldo.timer"
 else
-  runuser -u "$APP_USER" -- bash -c "cd $APP_DIR && set -a && . $ENV_FILE && set +a && PATH=$NODE_DIR/bin:\$PATH npx tsx scripts/preflight.ts" || warn "El preflight tiene pendientes (ver arriba)."
+  runuser -u "$APP_USER" -- env HOME="$HOME_DIR" bash -c "cd $APP_DIR && set -a && . $ENV_FILE && set +a && PATH=$NODE_DIR/bin:\$PATH npx tsx scripts/preflight.ts" || warn "El preflight tiene pendientes (ver arriba)."
+  [ "${OTRAS:-1}" = "0" ] && { systemctl restart postgresql; for i in $(seq 1 60); do runuser -u postgres -- pg_isready -q && break; sleep 1; done; }   # SOLO si no hay bases ajenas (lo comprobó el paso 4); ANTES de arrancar la app
   systemctl enable --now crea-oficina.service crea-tick-automatizaciones.timer crea-tick-cola.timer crea-respaldo.timer
-  [ "${OTRAS:-1}" = "0" ] && systemctl restart postgresql   # SOLO si no hay bases ajenas (lo comprobó el paso 4)
   sleep 6; curl -fsS "http://127.0.0.1:$PORT/api/health" >/dev/null && ok "La aplicación responde en 127.0.0.1:$PORT" || die "La aplicación no responde. Mira: journalctl -u crea-oficina -n 50"
 fi; cmpoc "servicio"
 
@@ -293,7 +294,7 @@ if [ "$DRY" = 0 ]; then nginx -t || die "nginx -t falló con el bloque HTTPS. El
 # ================= 9. Respaldos y verificación final =================
 paso "9. Probar respaldo y restauración" "hace un respaldo cifrado real y lo restaura en una base TEMPORAL para comprobarlo (la base real no se toca)."
 if [ "$DRY" = 1 ]; then echo "   [SIMULACRO] systemctl start crea-respaldo.service → recuperar.sh --probar <archivo>"
-else systemctl start crea-respaldo.service; ULT="$(ls -1t "$BACKUPS"/crea-*.enc | head -1)"; "$AQUI/recuperar.sh" --probar "$ULT"; fi
+else systemctl start crea-respaldo.service; ULT="$(ls -1t "$BACKUPS"/crea-*.enc | sed -n 1p)"; "$AQUI/recuperar.sh" --probar "$ULT"; fi
 titulo "10. Verificación final"
 [ "$DRY" = 0 ] && { curl -fsS "https://$DOM/api/health" && echo && ok "HTTPS funciona en https://$DOM"; "$AQUI/openclaw_check.sh" --comparar "$STATE/openclaw_antes.txt"; } || echo "   [SIMULACRO] curl https://$DOM/api/health + openclaw_check.sh --comparar"
 cat <<FIN

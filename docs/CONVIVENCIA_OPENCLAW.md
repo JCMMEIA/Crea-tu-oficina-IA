@@ -62,7 +62,21 @@ Peor caso simultáneo: ~1 GB (sistema+OpenClaw, según tus datos) + 2,3 + 3 ≈ 
 8. **Node 24 del sistema no se usa** (la aplicación solo se probó con 22).
 9. Pendientes de siempre: Claude real, Stripe real, Telegram real, política de privacidad revisada.
 
-## 8. Comandos (en tu VPS, como root). Nada se ejecuta sin que lo hagas tú
+## 7b. Procedimiento recomendado: UN comando (`instalar_todo.sh`)
+```bash
+cd /root/crea-instalador && git pull && cd deploy/convivencia
+sudo bash instalar_todo.sh --solo-simulacro      # 1.ª vez: hace todo MENOS aplicar (no cambia nada)
+sudo bash instalar_todo.sh                       # cuando estés conforme: te pide tu correo y UNA autorización («AUTORIZO»)
+```
+Hace: busca OpenClaw → requisitos → pruebas (si fallan, para) → foto de OpenClaw → simulacro → **una sola autorización** con la lista completa → instalación → comparación final de OpenClaw. Dominio por defecto `app.mmeia.tech`. Todo queda en `/root/crea-instalacion-*.log` (sin claves).
+
+### Causa del fallo `RESULTADO_FINAL=1` (corregido)
+La prueba «OpenClaw: sin cambios → INTACTO; tras reinicio → lo detecta» levantaba un servidor falso **en el puerto 18789, que en tu VPS es el de OpenClaw real**. El servidor falso no podía arrancar (puerto ocupado), así que la prueba comparaba a OpenClaw consigo mismo y su «reinicio simulado» nunca ocurría: no detectó el cambio y falló. **OpenClaw no sufrió nada** (reproducido: el proceso simulado conservó su PID). Era un defecto de la prueba, no del instalador. Ahora usa un puerto libre al azar y solo termina el proceso que ella misma creó (por PID); hay otra prueba que prohíbe `pkill`/`killall` y el puerto real en esa parte. Verificado: pasa 13/13 con y sin algo escuchando en 18789, y el proceso simulado de OpenClaw conserva su PID.
+
+## 7c. Otros defectos corregidos al revisar el modo «aplicar»
+`cd /` antes de git/psql (ejecutan como otros usuarios y no pueden leer `/root`); esperar a que PostgreSQL esté listo tras instalarlo; reiniciar PostgreSQL **antes** de arrancar la aplicación; `npm ci --include=dev` (con `NODE_ENV=production` npm omite `tsx`, que usa el preflight; verificado: `npm config get omit` devuelve `dev`); y la aplicación ya no cae si PostgreSQL pierde una conexión inactiva.
+
+## 8. Comandos manuales paso a paso (alternativa a `instalar_todo.sh`)
 ```bash
 # 0) Descargar solo el instalador de convivencia (no instala nada)
 git clone --depth 1 https://github.com/JCMMEIA/crea-tu-oficina-ia /root/crea-instalador && cd /root/crea-instalador/deploy/convivencia

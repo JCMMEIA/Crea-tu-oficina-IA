@@ -51,7 +51,7 @@ grep -q '^ANTHROPIC_API_KEY=' "$ENVF" || echo "# ANTHROPIC_API_KEY=  (agrégala 
 echo "== 5/8 Código y compilación =="
 [ -d "$APP/.git" ] && git -C "$APP" pull --ff-only || git clone "$REPO" "$APP"
 chown -R cto:cto "$APP"
-sudo -u cto bash -c "cd $APP && set -a && . $ENVF && set +a && npm ci --no-audit --no-fund && npm run build"
+sudo -u cto bash -c "cd $APP && set -a && . $ENVF && set +a && npm ci --include=dev --no-audit --no-fund && npm run build"
 
 echo "== 6/8 Servicio, HTTPS y firewall =="
 cat > /etc/systemd/system/cto.service <<UNIT

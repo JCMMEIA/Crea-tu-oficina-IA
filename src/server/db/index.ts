@@ -28,6 +28,7 @@ export async function createPgliteDb(dataDir?: string): Promise<Db> {
 export async function createPgDb(url: string): Promise<Db> {
   const { Pool } = await import("pg");
   const pool = new Pool({ connectionString: url });
+  pool.on("error", (e) => console.error("[db] se perdió una conexión inactiva (se reabrirá sola):", e.message)); // sin esto, reiniciar PostgreSQL tumbaba el proceso
   await pool.query(schema());
   const wrap = (c: { query: (s: string, p?: unknown[]) => Promise<{ rows: any[] }> }): Omit<Db, "close"> => ({
     query: async (sql, params) => (await c.query(sql, params as any[])).rows,
