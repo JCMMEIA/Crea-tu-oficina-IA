@@ -1,3 +1,5 @@
+import { buildBrainContext } from "../brain";
+import { classifyTask } from "../ai/classify";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Db, newId } from "../db";
@@ -105,9 +107,11 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
   const { defs, map } = buildTools(run, connected);
 
   const knowledge = await searchForEmployee(db, actor.companyId, task.employee_id, `${task.instruction} ${task.context}`);
+  const brain = await buildBrainContext(db, actor.companyId); // Cerebro Empresarial: la ficha de ESTA oficina llega a la IA en cada ejecución
   const mates = await db.query("SELECT id,name,role_title FROM employees WHERE company_id=$1 AND status='active' AND id<>$2 ORDER BY created_at LIMIT 30", [actor.companyId, task.employee_id]);
   const system = [
     run.skill.systemPrompt,
+    brain.text,
     mates.length ? `\n## Tus compañeros\nPuedes pedirles trabajo con delegate_task (usa su id exacto):\n${mates.map((m) => `- ${m.name} — ${m.role_title} (id: ${m.id})`).join("\n")}` : "",
     run.skill.procedures.length ? `\n## Procedimientos\n${run.skill.procedures.map((p) => `- ${p}`).join("\n")}` : "",
     run.skill.outputFormat ? `\n## Formato de respuesta\n${run.skill.outputFormat}` : "",
@@ -126,16 +130,19 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
 
   await db.query("UPDATE tasks SET status='in_progress', skill_version=$2 WHERE id=$1", [taskId, run.version]);
   await event(db, actor.companyId, taskId, "started", { skillVersion: run.version, model: provider.id });
+  await event(db, actor.companyId, taskId, "context_used", { profileFields: brain.fields, approxTokens: brain.approxTokens, docs: knowledge.map((k) => ({ id: k.id, title: k.title })) });
 
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), run.skill.autonomy.maxTaskSeconds * 1000);
   const messages: Msg[] = [{ role: "user", content: userMsg }];
-  let inTok = 0, outTok = 0, text = "";
+  let inTok = 0, outTok = 0, text = ""; let costAcc = 0; // costo REAL acumulado (el router lo reporta por llamada)
+  const meta = provider.id === "router" ? await classifyTask(db, task as any, { toolCount: defs.length, contextChars: system.length + userMsg.length, brainFields: brain.fields.length }) : undefined;
+  if (meta) await event(db, actor.companyId, taskId, "routed", { level: meta.level, sensitivity: meta.sensitivity, reasons: meta.reasons });
   const evidence: string[] = [];
   try {
     for (let step = 0; step < MAX_STEPS; step++) {
-      const res = await withRetry(() => provider.complete({ system, messages, tools: defs, maxTokens, signal: ac.signal }), deps.retryDelayMs ?? 500);
-      inTok += res.inputTokens; outTok += res.outputTokens; text = res.text || text;
+      const res = await withRetry(() => provider.complete({ system, messages, tools: defs, maxTokens, signal: ac.signal, meta }), deps.retryDelayMs ?? 500);
+      inTok += res.inputTokens; outTok += res.outputTokens; text = res.text || text; costAcc += res.costUsd ?? costUsd(price, res.inputTokens, res.outputTokens);
       if (!res.toolCalls.length) break;
       messages.push({ role: "assistant", text: res.text, toolCalls: res.toolCalls });
       const results: { id: string; content: string; isError?: boolean }[] = [];
@@ -174,7 +181,7 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
       messages.push({ role: "tool", results });
       if (paused) break;
     }
-    const cost = costUsd(price, inTok, outTok);
+    const cost = costAcc;
     await recordUsage(db, { companyId: actor.companyId, employeeId: task.employee_id, taskId, inputTokens: inTok, outputTokens: outTok, costUsd: cost });
     const pending = await db.query("SELECT 1 FROM approvals WHERE task_id=$1 AND status='pending'", [taskId]);
     const status = pending.length ? "awaiting_approval" : "completed";
@@ -183,7 +190,9 @@ export async function runTask(db: Db, actor: Actor, taskId: string, deps: RunDep
     await event(db, actor.companyId, taskId, status, { evidence });
     return { status };
   } catch (e: any) {
-    if (inTok || outTok) await recordUsage(db, { companyId: actor.companyId, employeeId: task.employee_id, taskId, inputTokens: inTok, outputTokens: outTok, costUsd: costUsd(price, inTok, outTok) });
+    if (inTok || outTok) await recordUsage(db, { companyId: actor.companyId, employeeId: task.employee_id, taskId, inputTokens: inTok, outputTokens: outTok, costUsd: costAcc });
+    if (e?.name === "QuotaError") return fail(e.message, "limit_quota");
+    if (e?.name === "RouterError") return fail(e.message, "router_failed");
     return fail(ac.signal.aborted ? `Tiempo máximo de ${run.skill.autonomy.maxTaskSeconds}s excedido.` : `Falló la IA: ${e.message}`);
   } finally { clearTimeout(timer); }
 }

@@ -26,12 +26,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/agregar-empleado">➕ Agregar empleado</Link>
         <Link href="/oficina-3d">🏢 Ver mi oficina</Link>
         <small>Trabajo</small>
+        <Link href="/tareas">✨ Tareas guiadas</Link>
+        <Link href="/resultados">📝 Mis resultados</Link>
         <Link href="/aprobaciones">✋ Por aprobar{pending ? ` (${pending})` : ""}</Link>
         <Link href="/actividad">📋 Historial de trabajo</Link>
         <Link href="/automatizaciones">🔁 Tareas automáticas</Link>
         <Link href="/inventario">📦 Inventario</Link>
         <small>Preparar</small>
         <Link href="/conexiones">🔌 Conecta tus aplicaciones</Link>
+        <Link href="/cerebro">🧠 Cerebro de mi empresa</Link>
+        <Link href="/consumo">📊 Mi consumo</Link>
         <Link href="/conocimiento">📚 Lo que debe saber mi negocio</Link>
         <Link href="/celular">📱 Mi oficina en el celular</Link>
         <Link href="/ayuda">❓ Ayuda</Link>

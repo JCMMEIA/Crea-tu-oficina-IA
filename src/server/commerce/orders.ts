@@ -1,6 +1,7 @@
 import { Db, newId } from "../db";
 import { AgencyActor, audit, createPasswordlessUser } from "../auth";
 import { isPlanKey, PlanKey } from "../agency/plans";
+import { attributeOrder } from "../affiliates";
 import { chooseServices, hireInDemo, setStep } from "../onboarding";
 import { getIndustry } from "../agency/industries";
 import { queueEmail } from "./mail";
@@ -14,12 +15,12 @@ const clean = (c: any): OfficeConfig => ({
 });
 
 /** Intención de compra: se crea antes de pagar; no crea cuenta, agencia ni acceso. */
-export async function createIntent(db: Db, i: { plan: PlanKey; kind?: "primera" | "adicional"; userId?: string | null; email?: string | null; config?: OfficeConfig; source?: string; utm?: Record<string, string> }): Promise<string> {
+export async function createIntent(db: Db, i: { plan: PlanKey; kind?: "primera" | "adicional"; userId?: string | null; email?: string | null; config?: OfficeConfig; source?: string; utm?: Record<string, string>; affiliateCode?: string | null }): Promise<string> {
   if (!isPlanKey(i.plan) || i.plan === "prueba") throw new Error("Plan no válido.");
   const n = Number((await db.query<{ n: string }>("SELECT count(*) n FROM checkout_intents WHERE created_at > now() - interval '1 hour'"))[0].n);
   if (n >= 300) throw new Error("Hay muchas compras en este momento. Inténtalo en unos minutos.");
   const id = newId();
-  await db.query("INSERT INTO checkout_intents(id,email,user_id,kind,plan,config,source,utm) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id, i.email?.trim().toLowerCase() ?? null, i.userId ?? null, i.kind ?? "primera", i.plan, JSON.stringify(clean(i.config)), (i.source || "directo").slice(0, 60), JSON.stringify(i.utm ?? {})]);
+  await db.query("INSERT INTO checkout_intents(id,email,user_id,kind,plan,config,source,utm,affiliate_code) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [id, i.email?.trim().toLowerCase() ?? null, i.userId ?? null, i.kind ?? "primera", i.plan, JSON.stringify(clean(i.config)), (i.source || "directo").slice(0, 60), JSON.stringify(i.utm ?? {}), (i.affiliateCode ?? "").trim().toUpperCase().slice(0, 16) || null]);
   return id;
 }
 export async function attachSession(db: Db, intentId: string, sessionId: string, url?: string) { await db.query("UPDATE checkout_intents SET checkout_session_id=$2, checkout_url=$3 WHERE id=$1", [intentId, sessionId, url ?? null]); }
@@ -72,6 +73,7 @@ export async function deliverPaidCheckout(db: Db, d: PaidCheckout): Promise<{ ag
     await t.query(`INSERT INTO orders(id,checkout_session_id,intent_id,email,plan,kind,stripe_customer_id,stripe_subscription_id,amount_total,currency,source) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (checkout_session_id) DO NOTHING`,
       [newId(), d.sessionId, d.intentId, email, intent.plan, intent.kind, d.customerId ?? null, d.subscriptionId ?? null, d.amountTotal ?? null, d.currency ?? null, intent.source]);
     const order = (await t.query("SELECT * FROM orders WHERE checkout_session_id=$1 FOR UPDATE", [d.sessionId]))[0];
+    if (!order.affiliate_id && !order.affiliate_flag && intent.affiliate_code) await attributeOrder(t, order.id, { code: intent.affiliate_code, kind: intent.kind, email, userId: intent.user_id }); // afiliados: solo atribuye o marca; no puede impedir la entrega
     if (order.status === "entregada") return { agencyId: order.agency_id as string, created: false, user: null as any };
     let userId: string | null = null;
     if (intent.user_id && (await t.query("SELECT 1 FROM users WHERE id=$1", [intent.user_id])).length) userId = intent.user_id;

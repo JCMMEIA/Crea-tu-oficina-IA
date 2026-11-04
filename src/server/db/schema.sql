@@ -286,3 +286,67 @@ CREATE INDEX IF NOT EXISTS emails_provider_idx ON emails(provider_id);
 CREATE INDEX IF NOT EXISTS emails_status_idx ON emails(status, created_at);
 -- Identidad de empleados: foto personalizada del cliente (imagen pequeña validada, data URL). El nombre propio usa employees.name.
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo text;
+-- Tareas guiadas: cada ejecución y su resultado, ligados a la oficina (company_id) y a la tarea del motor (tasks). El resultado SIEMPRE es una propuesta generada: no implica publicación ni envío.
+CREATE TABLE IF NOT EXISTS guided_runs (
+  id text PRIMARY KEY, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  employee_id text REFERENCES employees(id) ON DELETE SET NULL, task_id text REFERENCES tasks(id) ON DELETE SET NULL,
+  task_key text NOT NULL, title text NOT NULL, answers jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'en_proceso' CHECK (status IN ('en_proceso','listo','error')),
+  result text, result_edited text, edited_at timestamptz, error text, error_code text,
+  sections_ok boolean, sections_missing jsonb, context_used jsonb,
+  input_tokens int NOT NULL DEFAULT 0, output_tokens int NOT NULL DEFAULT 0, cost_usd numeric NOT NULL DEFAULT 0,
+  created_by text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS guided_runs_company_idx ON guided_runs(company_id, created_at DESC);
+
+-- ===== Router de modelos de IA, cuotas y registro de llamadas =====
+-- Catálogo de modelos EDITABLE desde /admin/ia. Un modelo solo se usa si enabled Y verified (precio y política de datos revisados por una persona). No hay precios «de fábrica».
+CREATE TABLE IF NOT EXISTS ai_models (
+  id text PRIMARY KEY, provider text NOT NULL CHECK (provider IN ('openrouter','anthropic')), model_id text NOT NULL, label text NOT NULL,
+  tier text NOT NULL CHECK (tier IN ('free','economy','premium')), max_level text NOT NULL DEFAULT 'B' CHECK (max_level IN ('A','B','C')),
+  price_in_usd_mtok numeric NOT NULL DEFAULT 0, price_out_usd_mtok numeric NOT NULL DEFAULT 0, context_window int NOT NULL DEFAULT 8000,
+  supports_tools boolean NOT NULL DEFAULT false, supports_json boolean NOT NULL DEFAULT false,
+  data_policy text NOT NULL DEFAULT 'unknown' CHECK (data_policy IN ('unknown','may_train','no_training','zero_retention')),
+  credit_weight numeric NOT NULL DEFAULT 1, enabled boolean NOT NULL DEFAULT false, verified boolean NOT NULL DEFAULT false, notes text NOT NULL DEFAULT '',
+  updated_by text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE (provider, model_id));
+CREATE TABLE IF NOT EXISTS ai_settings (key text PRIMARY KEY, value jsonb NOT NULL, updated_by text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now());
+-- Límites por plan (internos; NO son precios publicados). Cuota mensual en CRÉDITOS (= tokens × peso del modelo) y tope interno de gasto en USD por CUENTA.
+CREATE TABLE IF NOT EXISTS ai_plan_limits (
+  plan text PRIMARY KEY, monthly_credits bigint NOT NULL, monthly_budget_usd numeric NOT NULL, max_offices int NOT NULL DEFAULT 1,
+  allowed_tiers text[] NOT NULL DEFAULT ARRAY['free','economy']::text[], max_level text NOT NULL DEFAULT 'B' CHECK (max_level IN ('A','B','C')),
+  max_task_usd numeric NOT NULL DEFAULT 0.25, updated_by text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now());
+-- Uso del mes por cuenta (dueño de la oficina). Reservas y consumo viven en la MISMA fila para poder reservar con una sola sentencia atómica.
+CREATE TABLE IF NOT EXISTS ai_accounts (
+  account_id text NOT NULL, period date NOT NULL, credits_used bigint NOT NULL DEFAULT 0, credits_reserved bigint NOT NULL DEFAULT 0,
+  usd_used numeric NOT NULL DEFAULT 0, usd_reserved numeric NOT NULL DEFAULT 0, tokens_used bigint NOT NULL DEFAULT 0, calls int NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period));
+CREATE TABLE IF NOT EXISTS ai_reservations (
+  id text PRIMARY KEY, account_id text NOT NULL, period date NOT NULL, company_id text, task_id text, credits bigint NOT NULL, usd numeric NOT NULL,
+  status text NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved','settled','released')), created_at timestamptz NOT NULL DEFAULT now(), closed_at timestamptz);
+CREATE INDEX IF NOT EXISTS ai_reservations_open_idx ON ai_reservations(status, created_at);
+-- Una fila por INTENTO de llamada a un modelo (incluye los que fallan): auditoría de costo, fallback y calidad.
+CREATE TABLE IF NOT EXISTS ai_calls (
+  id bigserial PRIMARY KEY, account_id text NOT NULL, company_id text, task_id text, employee_id text, attempt int NOT NULL DEFAULT 1,
+  level text, sensitivity text, requested_model text, used_model text, provider text, status text NOT NULL, fallback_reason text,
+  input_tokens int NOT NULL DEFAULT 0, output_tokens int NOT NULL DEFAULT 0, credits bigint NOT NULL DEFAULT 0, cost_usd numeric NOT NULL DEFAULT 0, cost_source text NOT NULL DEFAULT 'estimado',
+  latency_ms int NOT NULL DEFAULT 0, validation jsonb, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS ai_calls_account_idx ON ai_calls(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ai_calls_task_idx ON ai_calls(task_id);
+CREATE TABLE IF NOT EXISTS ai_alerts (account_id text NOT NULL, period date NOT NULL, threshold int NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period, threshold));
+
+-- ===== Programa de afiliados (por invitación o solicitud aprobada) =====
+ALTER TABLE checkout_intents ADD COLUMN IF NOT EXISTS affiliate_code text;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS affiliate_id text;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS affiliate_flag text;
+CREATE TABLE IF NOT EXISTS affiliates (
+  id text PRIMARY KEY, email text NOT NULL UNIQUE, name text NOT NULL DEFAULT '', code text UNIQUE, status text NOT NULL DEFAULT 'solicitada' CHECK (status IN ('solicitada','aprobada','suspendida','rechazada')),
+  channel text NOT NULL DEFAULT '', terms_version text, terms_accepted_at timestamptz, invited boolean NOT NULL DEFAULT false, note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), approved_at timestamptz);
+CREATE TABLE IF NOT EXISTS affiliate_payouts (
+  id text PRIMARY KEY, affiliate_id text NOT NULL REFERENCES affiliates(id) ON DELETE CASCADE, period date NOT NULL, total_cents bigint NOT NULL, currency text NOT NULL DEFAULT 'mxn',
+  status text NOT NULL DEFAULT 'borrador' CHECK (status IN ('borrador','pagado')), reference text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), paid_at timestamptz, UNIQUE (affiliate_id, period));
+CREATE TABLE IF NOT EXISTS affiliate_commissions (
+  id text PRIMARY KEY, affiliate_id text NOT NULL REFERENCES affiliates(id) ON DELETE CASCADE, order_id text, invoice_id text, month_index int NOT NULL DEFAULT 1,
+  net_cents bigint NOT NULL, rate numeric NOT NULL, amount_cents bigint NOT NULL, currency text NOT NULL DEFAULT 'mxn',
+  kind text NOT NULL DEFAULT 'comision' CHECK (kind IN ('comision','ajuste')), status text NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente','aprobada','pagada','revertida')),
+  reason text NOT NULL DEFAULT '', payout_id text REFERENCES affiliate_payouts(id) ON DELETE SET NULL, created_at timestamptz NOT NULL DEFAULT now(), approved_at timestamptz);
+CREATE UNIQUE INDEX IF NOT EXISTS affiliate_commissions_invoice_idx ON affiliate_commissions(invoice_id, kind) WHERE invoice_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS affiliate_commissions_aff_idx ON affiliate_commissions(affiliate_id, created_at DESC);
