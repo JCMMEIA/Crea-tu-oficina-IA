@@ -22,8 +22,8 @@ describe("sistema de diseño premium", () => {
   it("testimonios: sin testimonios reales la sección se oculta; los que existan deben tener nombre, cargo y texto", () => {
     expect(Array.isArray(TESTIMONIALS)).toBe(true);
     for (const t of TESTIMONIALS) { expect(t.name.length).toBeGreaterThan(1); expect(t.role.length).toBeGreaterThan(1); expect(t.quote.length).toBeGreaterThan(10); }
-    const page = fs.readFileSync(path.join(root, "src/features/funnel/components/Testimonials.tsx"), "utf8");
-    expect(page).toMatch(/!TESTIMONIALS\.length && !preview/);
+    const page = fs.readFileSync(path.join(root, "src/features/funnel/components/Trust.tsx"), "utf8");
+    expect(page).toMatch(/TESTIMONIALS\.length > 0/);
     expect(page).not.toMatch(/★|⭐|Carlos Méndez|Ana Rivas|Diego Salazar/);
   });
   it("tokens del sistema: paleta, espaciado y tipografía definidos en un solo lugar", () => {
@@ -37,6 +37,6 @@ describe("sistema de diseño premium", () => {
     const layout = fs.readFileSync(path.join(root, "src/app/layout.tsx"), "utf8"); expect(layout).toMatch(/themeColor/); expect(layout).toMatch(/manifest/);
   });
   it("todas las imágenes de la landing existen y pesan poco", () => {
-    for (const f of ["panel", "vista-inicio", "vista-nueva-oficina", "vista-mis-oficinas", "vista-empleados", "vista-departamentos", "vista-automatizaciones", "vista-configuracion", "vista-facturacion"]) { const p = path.join(root, `public/landing/${f}.webp`); expect(fs.existsSync(p), f).toBe(true); expect(fs.statSync(p).size, f).toBeLessThan(120_000); }
+    for (const f of ["panel", "vista-inicio", "vista-nueva-oficina", "vista-mis-oficinas", "vista-empleados", "vista-departamentos", "vista-automatizaciones", "vista-configuracion", "vista-facturacion", "cerebro-negocio", "cerebro-marca", "tarea-formulario", "consumo"]) { const p = path.join(root, `public/landing/${f}.webp`); expect(fs.existsSync(p), f).toBe(true); expect(fs.statSync(p).size, f).toBeLessThan(120_000); }
   });
 });
