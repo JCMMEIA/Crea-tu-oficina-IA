@@ -33,10 +33,10 @@ export default async function NuevaOficina({ searchParams }: { searchParams: Pro
       <p className="row"><Link className="btn ghost" href={`?paso=2&nombre=${encodeURIComponent(nombre)}&negocio=${negocio}`}>← Atrás</Link><button className="big" data-testid="nueva-next">Revisar y confirmar →</button></p></form>}
     {paso === 4 && <div className="card"><h2>Confirma tu nueva oficina</h2>
       <p><b>{nombre || "Mi oficina IA"}</b> · {getIndustry(negocio)?.name ?? "Negocio sin definir"}</p><p className="muted">{emps.length} empleado(s) IA · plan {planOf(newOfficePlan()).label}</p>
-      {rights.length > 0 ? (<><p className="tip" role="status" data-testid="usar-derecho">✅ Tienes <b>{rights.length}</b> derecho(s) de creación disponible(s): esta oficina <b>no tiene costo nuevo</b>.</p>
+      {rights.length > 0 ? (<><p className="tip" role="status" data-testid="usar-derecho">Tienes <b>{rights.length}</b> derecho(s) de creación disponible(s): esta oficina <b>no tiene costo nuevo</b>.</p>
           <form action={newOfficeWithRightAction}>{hidden}<p><button className="big" data-testid="crear-con-derecho">Crear mi oficina</button></p></form></>)
         : (<><p style={{ fontSize: "1.4rem" }} data-testid="precio-nueva"><b>{formatPrice(price)}</b></p><p className="muted">Es una suscripción <b>independiente</b> de tus otras oficinas. Se cobra al confirmar el pago; la oficina se crea cuando el pago queda confirmado. Puedes cancelarla cuando quieras al final del periodo.</p>
           {gate.open ? <form action={newOfficeCheckoutAction}>{hidden}<p><button className="big" data-testid="pagar-nueva">Pagar y crear mi oficina</button></p></form>
-            : <p className="tip" role="note" data-testid="compras-cerradas">⏳ Las compras todavía no están abiertas. Cuando lo estén podrás crear tu oficina aquí.</p>}</>)}
+            : <p className="tip" role="note" data-testid="compras-cerradas">Las compras todavía no están abiertas. Cuando lo estén podrás crear tu oficina aquí.</p>}</>)}
       <p><Link href={`?paso=3&nombre=${encodeURIComponent(nombre)}&negocio=${negocio}${sel.map((s) => `&servicio=${s}`).join("")}`}>← Atrás</Link></p></div>}</>);
 }

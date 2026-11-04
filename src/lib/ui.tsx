@@ -21,6 +21,6 @@ export const Help = ({ children }: { children: React.ReactNode }) => <span class
 export function Steps({ labels, current }: { labels: readonly string[]; current: number }) {
   return (<div className="steps-bar" role="list" aria-label={`Paso ${current} de ${labels.length}`}>{labels.map((l, i) => <div key={l} role="listitem" className={`s ${i + 1 === current ? "on" : i + 1 < current ? "done" : ""}`} aria-current={i + 1 === current ? "step" : undefined}>{i + 1 < current ? "✓ " : `${i + 1}. `}{l}</div>)}</div>);
 }
-export function BigAction({ href, icon, title, text, testId }: { href: string; icon: string; title: string; text: string; testId?: string }) {
+export function BigAction({ href, icon, title, text, testId }: { href: string; icon: React.ReactNode; title: string; text: string; testId?: string }) {
   return <Link className="action" href={href} data-testid={testId}><span className="ic" aria-hidden="true">{icon}</span><b>{title}</b><span className="t">{text}</span></Link>;
 }

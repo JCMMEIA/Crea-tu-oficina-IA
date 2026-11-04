@@ -1,24 +1,25 @@
 import Link from "next/link";
 import { requireUser, when } from "@/lib/session";
 import { Flash, BigAction } from "@/lib/ui";
+import { Icon } from "@/components/Icon";
 import { listOffices } from "@/server/commerce/offices";
 import { getIndustry } from "@/server/agency/industries";
 import { planOf } from "@/server/agency/plans";
 import { cancelOfficeAction, keepOfficeAction, pauseOfficeAction, portalAction, resumeOfficeAction, selectOfficeAction } from "../commerce_actions";
 
-const ESTADO: Record<string, [string, string]> = { activa: ["✅ Activa", "ok"], pausada: ["⏸️ Pausada", "warn"], cancelada: ["⛔ Cancelada", "bad"] };
-const COBRO: Record<string, string> = { pagado: "Suscripción al corriente", pago_pendiente: "⚠️ Pago pendiente: actualiza tu forma de pago", cancelada: "Suscripción terminada", cortesia: "Cortesía (sin cobro)", sin_facturacion: "Sin cobro", licencia_manual: "Licencia manual" };
+const ESTADO: Record<string, [string, string]> = { activa: ["Activa", "ok"], pausada: ["Pausada", "warn"], cancelada: ["Cancelada", "bad"] };
+const COBRO: Record<string, string> = { pagado: "Suscripción al corriente", pago_pendiente: "Pago pendiente: actualiza tu forma de pago", cancelada: "Suscripción terminada", cortesia: "Cortesía (sin cobro)", sin_facturacion: "Sin cobro", licencia_manual: "Licencia manual" };
 export default async function MisOficinas({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const sp = await searchParams; const { db, user } = await requireUser(); const offices = await listOffices(db, user.userId);
   return (<><h1>Mis oficinas IA</h1><Flash sp={sp} />
     <div className="actions" data-testid="office-actions">
-      <BigAction href="/oficinas/nueva" icon="➕" title="NUEVA OFICINA IA" text="Crea otra oficina con su propio negocio, empleados y suscripción." testId="btn-nueva-oficina" />
-      <BigAction href="#mis-oficinas" icon="🗂️" title="MIS OFICINAS" text={`Tienes ${offices.length}. Entra a cualquiera con un clic.`} testId="btn-mis-oficinas" /></div>
+      <BigAction href="/oficinas/nueva" icon={<Icon name="plusbox" size={22} />} title="NUEVA OFICINA IA" text="Crea otra oficina con su propio negocio, empleados y suscripción." testId="btn-nueva-oficina" />
+      <BigAction href="#mis-oficinas" icon={<Icon name="layers" size={22} />} title="MIS OFICINAS" text={`Tienes ${offices.length}. Entra a cualquiera con un clic.`} testId="btn-mis-oficinas" /></div>
     <h2 id="mis-oficinas" style={{ marginTop: 22 }}>Mis oficinas ({offices.length})</h2>
     {!offices.length && <div className="card"><p>Todavía no tienes oficinas. <Link href="/oficinas/nueva">Crea la primera</Link>.</p></div>}
     <div className="grid">{offices.map((o) => { const [est, tone] = ESTADO[o.status] ?? [o.status, ""]; const owner = o.role === "agency_owner"; const ind = getIndustry(o.business_type);
       return (<div className="card" key={o.id} data-testid={`office-${o.id}`} data-office-name={o.name}>
-        <h3>{o.name}</h3><p><span className={`state ${tone}`}>{est}</span></p>
+        <h3>{o.name}</h3><p><span className={`badge ${tone}`}>{est}</span></p>
         <p className="muted">{ind?.name ?? (o.business_type || "Negocio sin definir")} · Plan {planOf(o.plan).label} · {o.employees} empleado(s) · {o.clients} cliente(s)</p>
         <p className="muted">{COBRO[o.billing_status] ?? o.billing_status}{o.cancel_at_period_end ? ` · se cancelará el ${when(o.current_period_end)}` : ""}</p>
         <div className="row">

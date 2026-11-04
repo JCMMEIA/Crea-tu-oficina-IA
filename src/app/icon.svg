@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Crea tu Oficina IA">
+  <defs><linearGradient id="g" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#5b2bd6"/></linearGradient></defs>
+  <rect width="64" height="64" rx="15" fill="url(#g)"/>
+  <path d="M32 11 54 24H10L32 11Z" fill="#fff"/>
+  <rect x="15" y="28" width="7" height="19" rx="1.5" fill="#fff"/>
+  <rect x="28.5" y="28" width="7" height="19" rx="1.5" fill="#fff"/>
+  <rect x="42" y="28" width="7" height="19" rx="1.5" fill="#fff"/>
+  <rect x="10" y="50" width="44" height="5.5" rx="2" fill="#fff"/>
+</svg>

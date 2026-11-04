@@ -18,12 +18,12 @@ export async function currentActor(): Promise<{ db: Db; actor: Actor | null; age
 }
 export async function requireActor(): Promise<{ db: Db; actor: Actor; agency: AgencyActor | null }> {
   const r = await currentActor();
-  if (!r.actor) redirect(r.agency ? "/agencia" : "/login");
+  if (!r.actor) redirect(r.agency ? "/agencia" : "/recuperar");
   return { db: r.db, actor: r.actor, agency: r.agency };
 }
 export async function requireAgency(): Promise<{ db: Db; agency: AgencyActor }> {
   const r = await currentActor();
-  if (!r.agency) redirect(r.actor ? "/oficina" : "/login");
+  if (!r.agency) redirect(r.actor ? "/oficina" : "/recuperar");
   return { db: r.db, agency: r.agency };
 }
 export async function setSessionCookie(token: string) {
@@ -41,7 +41,7 @@ export async function requireUser() {
   const db = await getDb();
   const token = (await cookies()).get(COOKIE)?.value;
   const user = await sessionUser(db, token);
-  if (!user) redirect("/login");
+  if (!user) redirect("/recuperar");
   return { db, user, agency: await agencyActorFromToken(db, token, (await cookies()).get(OFFICE_COOKIE)?.value) };
 }
 
@@ -51,6 +51,6 @@ export async function requireOperator() {
   const token = (await cookies()).get(COOKIE)?.value;
   const user = await sessionUser(db, token);
   const { isPlatformAdmin } = await import("@/server/commercial/admin");
-  if (!user || !isPlatformAdmin(user.email)) redirect(user ? "/" : "/login");
+  if (!user || !isPlatformAdmin(user.email)) redirect(user ? "/" : "/recuperar");
   return { db, op: { userId: user.userId, email: user.email } };
 }

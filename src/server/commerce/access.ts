@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Db } from "../db";
-import { startSession } from "../auth";
+import { startSession, createPasswordlessUser } from "../auth";
+import { isPlatformAdmin } from "../commercial/admin";
 import { queueEmail } from "./mail";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -24,7 +25,10 @@ export async function consumeAccessLink(db: Db, token: string): Promise<{ sessio
  */
 export async function requestAccess(db: Db, emailRaw: string): Promise<boolean> {
   const email = emailRaw.trim().toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 200) return false;
-  const u = (await db.query("SELECT id FROM users WHERE email=$1", [email]))[0]; if (!u) return false;
+  let u = (await db.query("SELECT id FROM users WHERE email=$1", [email]))[0];
+  // Los correos de OPERADOR (PLATFORM_ADMIN_EMAILS, configurados en el servidor) pueden iniciar sesión por enlace aunque aún no tengan cuenta: el enlace solo llega a ese buzón. Nadie más se crea así.
+  if (!u && isPlatformAdmin(email)) u = { id: await createPasswordlessUser(db, email, "Operador") } as any;
+  if (!u) return false;
   const n = Number((await db.query<{ n: string }>("SELECT count(*) n FROM emails WHERE to_email=$1 AND kind='acceso' AND created_at > now() - interval '1 hour'", [email]))[0].n);
   if (n >= 5) return false;
   return queueEmail(db, { to: email, kind: "acceso", payload: { userId: u.id } });
