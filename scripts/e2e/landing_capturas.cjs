@@ -1,0 +1,10 @@
+// Capturas de CADA sección de la landing, en escritorio y celular. Uso:  NODE_PATH=$(npm root -g) node scripts/e2e/landing_capturas.cjs http://127.0.0.1:3115 docs/landing/capturas
+const { chromium } = require("playwright"); const fs = require("fs"); const BASE = process.argv[2] || "http://127.0.0.1:3115", OUT = process.argv[3] || "/var/tmp/lp_caps"; fs.mkdirSync(OUT, { recursive: true });
+const SEC = [["hero", ".fx-hero"], ["caminos", "#caminos"], ["problema", "#problema"], ["producto", "#producto"], ["empleados", "#empleados"], ["cerebro", "#cerebro"], ["tareas", "#tareas"], ["workflows", "#workflows"], ["resultados", "#resultados"], ["como-funciona", "#como"], ["comparacion", "#comparacion"], ["planes", "#planes"], ["oferta-lista-de-espera", "#oferta"], ["confianza", "#confianza"], ["faq", "#faq"], ["cierre", ".lp-final"], ["footer", "footer.lp-footer"]];
+(async () => { const b = await chromium.launch();
+  for (const [n, vp, dsf] of [["escritorio", { width: 1440, height: 900 }, 1], ["movil", { width: 390, height: 844 }, 2]]) {
+    const c = await b.newContext({ viewport: vp, deviceScaleFactor: dsf, ...(n === "movil" ? { isMobile: true, hasTouch: true } : {}) }); const p = await c.newPage(); await p.goto(BASE + "/", { waitUntil: "networkidle" });
+    await p.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 350) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } window.scrollTo(0, 0); }); await p.waitForTimeout(400);
+    let i = 0; for (const [name, sel] of SEC) { i++; if (i === 2) await p.addStyleTag({ content: ".lp-header{position:static!important}.fx-float{animation:none!important}" }); const el = p.locator(sel).first(); await el.scrollIntoViewIfNeeded(); await p.waitForTimeout(450); await el.screenshot({ path: `${OUT}/${n}-${String(i).padStart(2, "0")}-${name}.jpg`, type: "jpeg", quality: 82, animations: "disabled" }); }
+    console.log(n, "ok", await p.evaluate(() => document.documentElement.scrollHeight)); await c.close(); }
+  await b.close(); })();

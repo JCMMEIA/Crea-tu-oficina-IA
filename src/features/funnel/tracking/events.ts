@@ -11,3 +11,8 @@ export const FUNNEL_EVENTS = {
 /** Identificadores de botón de compra: SIEMPRE empiezan con «comprar-» (así los cuenta el panel de conversión). */
 export const BUY_CTA = (donde: string) => `comprar-${donde}`;
 export const BUY_SPOTS = ["header", "header-movil", "hero", "oferta", "final"] as const;
+
+/** Identificadores de CTA de la landing (props.cta del evento «cta_click»). Los de compra siempre empiezan con «comprar-» (los cuenta el panel de conversión). */
+export const PLAN_CTA = (tier: string) => `plan-${tier}`;            // selección de plan (starter | pro | business)
+export const CTA_EMPLEADO = "empleado-conocer";                       // «Conocer empleado»
+export const CTA_TAREA = "tarea-explorada";                           // «Quiero usar estas tareas» tras explorar una demostración

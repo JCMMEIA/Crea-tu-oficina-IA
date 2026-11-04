@@ -1,0 +1,2 @@
+const { chromium } = require("playwright"); const path = require("path");
+(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1500, height: 1000 }, deviceScaleFactor: 1 }); await p.goto("file://" + path.resolve("docs/empleados/propuesta/propuesta-8-retratos.html")); await p.waitForTimeout(300); await p.screenshot({ path: "docs/empleados/propuesta/propuesta-8-retratos.png", fullPage: true }); await b.close(); console.log("captura lista"); })();
