@@ -14,6 +14,7 @@ export function Hero({ open, price }: { open: boolean; price: PriceInfo | null }
       <div className="lp-cta"><BuyButton open={open} where="hero" /><a className="btn ghost" href="#como" data-testid="conocer-como"><Icon name="play" size={15} />Conocer cómo funciona</a></div>
       {open && price && <p className="lp-priceline" data-testid="hero-precio"><b>{formatPrice(price)}</b> · una sola suscripción, sin permanencia</p>}
       <p className="fx-demo-link"><Link href="/panel-demo/inicio" data-testid="ver-panel">Ver el panel por dentro, sin registrarte <Icon name="arrow" size={14} /></Link></p>
+      <p className="fx-demo-link fx-aff-hint">¿Prefieres recomendarla y recibir comisión? <Link href="/afiliados" data-testid="hero-afiliado">Quiero ser afiliado <Icon name="arrow" size={14} /></Link></p>
       <div className="lp-trust">{HERO.trust.map(([i, t]) => <span key={t}><Icon name={i} size={18} />{t}</span>)}</div></div>
     <Reveal><div className="fx-hero-visual"><Laptop src="/landing/panel.webp" alt={HERO.laptopAlt} priority />
       <div className="fx-float f1" aria-hidden="true"><Icon name="users" size={16} /><span><b>41 puestos</b><small>para contratar</small></span></div>

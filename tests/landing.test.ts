@@ -9,7 +9,7 @@ import { COMPARACION } from "@/features/funnel/config/comparacion";
 import { FEATURES, estadoDe } from "@/features/funnel/config/disponibilidad";
 import { TIERS, FILAS, PLANES_APROBADOS } from "@/features/funnel/config/planes";
 import { faqItems, NAV, PASOS } from "@/features/funnel/config/content";
-import { CAMINOS, AFILIADOS_PAGE, GESTIONADO_PAGE } from "@/features/funnel/config/caminos";
+import { CAMINOS, AFILIADOS_PAGE, COMISIONES, GESTIONADO_PAGE } from "@/features/funnel/config/caminos";
 
 const root = process.cwd();
 const walk = (d: string): string[] => fs.readdirSync(path.join(root, d), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
@@ -45,7 +45,7 @@ describe("landing: contenido honesto y consistente", () => {
   it("no hay cifras o promesas inventadas en la landing", () => {
     for (const [f, src] of funnelSrc) {
       expect(src, f).not.toMatch(/\b(150|200)\+?\s*(tareas|workflows)/i); expect(src, f).not.toMatch(/garantizamos|garantizado|aumenta(rá)? tus ventas|resultados garantizados/i);
-      expect(src, f).not.toMatch(/★|⭐|Carlos Méndez|Ana Rivas|Diego Salazar/); if (f.includes("/config/")) expect(src, f).not.toMatch(/\b\d{2,3}\s?%/); // porcentajes de éxito inventados
+      expect(src, f).not.toMatch(/★|⭐|Carlos Méndez|Ana Rivas|Diego Salazar/); if (f.includes("/config/")) expect(f.endsWith("config/caminos.ts") ? src.replace(/20 % del cobro neto elegible/g, "") : src, f).not.toMatch(/\b\d{2,3}\s?%/); // porcentajes de éxito inventados (única excepción: la PROPUESTA de comisión, marcada «sin aprobar»)
     }
     for (const t of TAREAS) expect(JSON.stringify(t.ejemplo)).not.toMatch(/\d\s?%/);
   });
@@ -60,7 +60,9 @@ describe("landing: contenido honesto y consistente", () => {
   });
   it("los dos caminos y el servicio secundario: sin precios, comisiones ni promesas; el afiliado es solo lista de interés", () => {
     expect(CAMINOS.oficina.nombre).toBe("Quiero mi Oficina IA"); expect(CAMINOS.afiliado.nombre).toBe("Quiero ser afiliado"); expect(CAMINOS.gestionado.nombre).toBe("Nosotros administramos tu oficina");
-    const txt = JSON.stringify({ CAMINOS, AFILIADOS_PAGE, GESTIONADO_PAGE }); expect(txt).not.toMatch(/\$\s?\d|\d\s?%|garantizad|ganarás/i); expect(txt).toMatch(/no una aparte|no una tercera/i);
+    const txt = JSON.stringify({ CAMINOS, AFILIADOS_PAGE, GESTIONADO_PAGE }); expect(txt).not.toMatch(/\$\s?\d|\d\s?%|garantizad|ganarás/i);
+    // Las comisiones se explican como PROPUESTA sin aprobar, sin importes en pesos ni ejemplos de ganancias
+    const com = JSON.stringify(COMISIONES); expect(com).toMatch(/sin aprobar/); expect(com).toMatch(/No es una oferta ni una promesa de ingresos/); expect(com).not.toMatch(/\$\s?\d|garantizad|ganarás|ganar[áa]s/i); expect(txt).toMatch(/no una aparte|no una tercera/i);
     expect(estadoDe("afiliados")).toBe("proximamente"); expect(estadoDe("servicioGestionado")).not.toBe("disponible");
     const code = funnelSrc.map(([, s]) => s).join("\n"); expect(code).not.toMatch(/\/r\/|cto_ref|affiliate_commissions|AFFILIATE_TERMS/); // el programa NO está implementado en esta rama
   });

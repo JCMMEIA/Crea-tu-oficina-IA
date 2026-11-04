@@ -1,5 +1,5 @@
 {
- "fecha": "2026-11-04T16:59:40.904Z",
+ "fecha": "2026-11-04T17:09:09.576Z",
  "resultados": [
   {
    "m": "hero: título exacto pedido",
@@ -62,7 +62,7 @@
    "ok": true
   },
   {
-   "m": "afiliados: NO publica comisiones, porcentajes ni precios (programa no implementado)",
+   "m": "afiliados: explica cómo funcionarían las comisiones como PROPUESTA sin aprobar, sin importes ni ejemplos de ganancias",
    "ok": true
   },
   {
@@ -254,11 +254,11 @@
    "ok": true
   },
   {
-   "m": "rendimiento escritorio: LCP 880 ms (<2500), CLS 0.000 (<0.1), 72 KB transferidos en la primera carga",
+   "m": "rendimiento escritorio: LCP 876 ms (<2500), CLS 0.000 (<0.1), 285 KB transferidos en la primera carga",
    "ok": true
   },
   {
-   "m": "rendimiento móvil: LCP 620 ms (<2500), CLS 0.000 (<0.1), 437 KB transferidos en la primera carga",
+   "m": "rendimiento móvil: LCP 580 ms (<2500), CLS 0.000 (<0.1), 126 KB transferidos en la primera carga",
    "ok": true
   },
   {
@@ -363,6 +363,10 @@
   },
   {
    "m": "menú móvil funcional: se abre y muestra «Iniciar sesión»",
+   "ok": true
+  },
+  {
+   "m": "móvil: el menú muestra los DOS caminos arriba y completos dentro de la pantalla",
    "ok": true
   },
   {
