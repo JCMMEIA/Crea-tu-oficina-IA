@@ -6,6 +6,7 @@ import { getSettings, usableModels } from "./config";
 import { accountOf, checkAlerts, periodStart, planOfAccount, QuotaError, release, reserve, settle, type Reservation } from "./quota";
 import { LEVEL_RANK, SENS_RANK, TIER_ORDER, type AiSettings, type Level, type ModelRow, type PlanLimit, type Sensitivity, type Tier } from "./types";
 import type { TaskMeta } from "./classify";
+import { audit } from "../auth/audit";
 
 /**
  * ROUTER INTELIGENTE (uno solo para todas las oficinas y los 41 puestos).
@@ -18,10 +19,16 @@ export interface Exclusion { id: string; reason: string }
 export interface Plan { candidates: { model: ModelRow; maxCostUsd: number }[]; excluded: Exclusion[] }
 
 export const estimateTokens = (req: Pick<CompleteRequest, "system" | "messages" | "tools">) => Math.ceil((req.system.length + JSON.stringify(req.messages).length + JSON.stringify(req.tools).length) / 3.2);
-const maxCost = (m: ModelRow, estIn: number, maxOut: number) => (estIn * m.price_in_usd_mtok + maxOut * m.price_out_usd_mtok) / 1e6;
+/** Margen de seguridad sobre el precio de catálogo y sobre el conteo aproximado de tokens de entrada: el costo reservado y el tope por llamada se calculan con él, y a OpenRouter se le exige `max_price` = precio × margen. */
+export const COST_MARGIN = 1.25;
+/** Si el costo real supera el máximo estimado por más de este factor, el modelo se desactiva solo. */
+export const ANOMALY_FACTOR = 1.5;
+const maxCost = (m: ModelRow, estIn: number, maxOut: number) => (estIn * COST_MARGIN * m.price_in_usd_mtok + maxOut * m.price_out_usd_mtok) / 1e6;
 const PREFERENCE: Record<Level, Tier[]> = { A: ["free", "economy", "premium"], B: ["economy", "premium", "free"], C: ["premium", "economy"] };
 const policyOk = (m: ModelRow, sens: Sensitivity, s: AiSettings): string | null => {
   if (sens === "public") return null;
+  // La etiqueta data_policy es lo que ALGUIEN declaró; lo que realmente se aplica en la API es provider.only + data_collection/zdr. Sin proveedores aprobados no hay restricción real.
+  if (m.provider === "openrouter" && !m.allowed_providers?.length) return "no tiene proveedores aprobados (la etiqueta de política de datos no basta: hay que fijar los proveedores en OpenRouter)";
   if (sens === "internal") { if (m.data_policy === "unknown" || m.data_policy === "may_train") return "su política de datos no garantiza que no entrene con información interna"; if (m.tier === "free" && !s.freeForInternal) return "los modelos gratuitos no reciben información interna (regla de la cuenta)"; return null; }
   return m.data_policy === "zero_retention" ? null : "la información confidencial solo va a modelos con retención cero verificada";
 };
@@ -88,12 +95,14 @@ export class RoutedProvider implements ModelProvider {
       if (!system) r = await reserve(db, { accountId, companyId: meta!.companyId, taskId: meta!.taskId, credits: (estIn + req.maxTokens) * m.credit_weight, usd: cand.maxCostUsd, limit });
       const started = t0();
       try {
-        const out = await be.complete(m.model_id, { ...req, meta: undefined }, { sensitivity: sens }); const ms = t0() - started;
+        const out = await be.complete(m.model_id, { ...req, meta: undefined }, { sensitivity: sens, allowedProviders: m.allowed_providers, maxPrice: { in: m.price_in_usd_mtok * COST_MARGIN, out: m.price_out_usd_mtok * COST_MARGIN } }); const ms = t0() - started;
         const tokens = out.inputTokens + out.outputTokens; const est = (out.inputTokens * m.price_in_usd_mtok + out.outputTokens * m.price_out_usd_mtok) / 1e6;
         const cost = typeof out.costUsd === "number" ? out.costUsd : est; const credits = tokens * m.credit_weight; const v = validateOutput(out, meta?.validate);
         if (r) await settle(db, r, { credits, usd: cost, tokens });
-        await this.record(db, { accountId, meta, attempt, requested: firstModel, m, status: v.ok ? "ok" : "invalida", reason: v.ok ? undefined : v.problems.join("; "), tin: out.inputTokens, tout: out.outputTokens, credits, cost, source: typeof out.costUsd === "number" ? "proveedor" : "estimado", ms, validation: v, providerName: out.providerName });
+        await this.record(db, { accountId, meta, attempt, requested: firstModel, m, status: v.ok ? "ok" : "invalida", reason: v.ok ? (cost > cand.maxCostUsd + 1e-9 ? `el costo real (US$ ${cost.toFixed(5)}) superó el máximo estimado (US$ ${cand.maxCostUsd.toFixed(5)}): revisa el precio del modelo` : undefined) : v.problems.join("; "), tin: out.inputTokens, tout: out.outputTokens, credits, cost, source: typeof out.costUsd === "number" ? "proveedor" : "estimado", ms, validation: v, providerName: out.providerName });
         if (!system) await checkAlerts(db, accountId);
+        // Freno de seguridad: un costo real MUY superior al máximo estimado indica un precio de catálogo equivocado o un proveedor fuera de lo pactado. Se desactiva el modelo (una persona decide si se reactiva).
+        if (cost > cand.maxCostUsd * ANOMALY_FACTOR + 1e-9) { await db.query("UPDATE ai_models SET enabled=false, notes=left(notes || ' [desactivado automáticamente: el costo real superó por mucho el máximo estimado]', 500), updated_by='router', updated_at=now() WHERE id=$1", [m.id]); await audit(db, {}, "ai.model.auto_disabled", m.id, { real_usd: cost, max_estimado_usd: cand.maxCostUsd }); }
         if (v.ok) return { ...out, costUsd: cost, model: m.id, provider: out.providerName ?? m.provider };
         log.push({ attempt, model: m.id, status: "invalida", reason: v.problems.join("; ") }); lastReason = v.problems.join("; "); prevFree = prevFree || m.tier === "free";
         // Una respuesta inválida YA se cobró (se liquidó con su consumo real): el siguiente intento reserva de nuevo y respeta el tope por tarea.

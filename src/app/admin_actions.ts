@@ -10,12 +10,15 @@ import { verifyAi } from "@/server/commerce/gate";
 import { grantRight } from "@/server/commerce/offices";
 import { processEmails, retryAllFailed, retryEmail } from "@/server/commerce/mail";
 import { assertOperator } from "@/server/commercial/admin";
-import { setModelEnabled, updatePlanLimit, updateSettings, upsertModel } from "@/server/ai/config";
+import { explainError, modelInputFromForm, saveModel, setModelEnabled, updatePlanLimit, updateSettings, type SaveModelResult } from "@/server/ai/config";
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "");
-async function run(back: string, fn: () => Promise<unknown>) {
-  try { await fn(); } catch (e: any) { if (e?.digest) throw e; return redirect(back + (back.includes("?") ? "&" : "?") + "error=" + encodeURIComponent(e?.name === "ZodError" ? (e.issues?.[0]?.message ?? "Revisa los datos.") : e.message)); }
-  revalidatePath("/admin", "layout"); redirect(back);
+/** Ejecuta una acción del panel. Éxito: redirige con `ok=` si se da un mensaje (la persona SIEMPRE debe ver el resultado). Error: `error=` con TODOS los problemas de validación, en español. `extra` agrega parámetros a la URL (p. ej. para rellenar el formulario). */
+async function run(back: string, fn: () => Promise<unknown>, okMsg?: string | ((r: any) => string), extra: (ok: boolean, r?: any) => Record<string, string> = () => ({})) {
+  const [path, hash] = back.split("#"); const url = (k: string, v: string, ok: boolean, r?: unknown) => { const q = new URLSearchParams(extra(ok, r)); q.set(k, v); return path + (path.includes("?") ? "&" : "?") + q.toString() + (hash ? "#" + hash : ""); };
+  let r: unknown;
+  try { r = await fn(); } catch (e: any) { if (e?.digest) throw e; return redirect(url("error", explainError(e), false)); }
+  revalidatePath("/admin", "layout"); if (okMsg) redirect(url("ok", typeof okMsg === "function" ? okMsg(r) : okMsg, true, r)); redirect(back);
 }
 export async function leadStatusAction(f: FormData) { const { db, op } = await requireOperator(); await run(s(f, "back") || "/admin/prospectos", () => setLeadStatus(db, op, s(f, "id"), s(f, "status"))); }
 export async function leadNoteAction(f: FormData) { const { db, op } = await requireOperator(); await run(`/admin/prospectos/${s(f, "id")}`, () => addNote(db, op, s(f, "id"), s(f, "body"))); }
@@ -37,7 +40,15 @@ export async function retryFailedAction() { const { db, op } = await requireOper
 export async function processEmailsAction() { const { db, op } = await requireOperator(); await run("/admin/correos", async () => { assertOperator(op); await processEmails(db); }); }
 
 const B = (f: FormData, k: string) => f.get(k) === "on";
-export async function aiModelAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/ia", () => upsertModel(db, op, { id: s(f, "id"), provider: s(f, "provider"), model_id: s(f, "model_id"), label: s(f, "label"), tier: s(f, "tier"), max_level: s(f, "max_level"), price_in_usd_mtok: s(f, "price_in_usd_mtok"), price_out_usd_mtok: s(f, "price_out_usd_mtok"), context_window: s(f, "context_window"), supports_tools: B(f, "supports_tools"), supports_json: B(f, "supports_json"), data_policy: s(f, "data_policy"), credit_weight: s(f, "credit_weight") || "1", enabled: B(f, "enabled"), verified: B(f, "verified"), notes: s(f, "notes") })); }
-export async function aiModelToggleAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/ia", () => setModelEnabled(db, op, s(f, "id"), s(f, "enable") === "1")); }
-export async function aiSettingsAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/ia", () => updateSettings(db, op, { maxAttempts: Number(s(f, "maxAttempts")), maxCallUsd: Number(s(f, "maxCallUsd")), allowPaidFallback: B(f, "allowPaidFallback"), freeForInternal: B(f, "freeForInternal"), callTimeoutMs: Number(s(f, "callTimeoutMs")), alertThresholds: s(f, "alertThresholds").split(",").map((x) => Number(x.trim())).filter(Boolean) })); }
-export async function aiPlanLimitAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/ia", () => updatePlanLimit(db, op, s(f, "plan"), { monthly_credits: s(f, "monthly_credits"), monthly_budget_usd: s(f, "monthly_budget_usd"), max_offices: s(f, "max_offices"), allowed_tiers: f.getAll("allowed_tiers").map(String), max_level: s(f, "max_level"), max_task_usd: s(f, "max_task_usd") })); }
+const MODEL_FIELDS = ["id", "provider", "model_id", "label", "tier", "max_level", "price_in_usd_mtok", "price_out_usd_mtok", "context_window", "credit_weight", "data_policy", "notes", "allowed_providers", "supports_tools", "supports_json", "verified", "enabled"];
+export async function aiModelAction(f: FormData) {
+  const { db, op } = await requireOperator();
+  // Si falla, se devuelve el formulario con lo que escribió la persona (v_*) y abierto, para corregir sin volver a empezar.
+  const echo = (ok: boolean, r?: SaveModelResult) => (ok ? { modelo: r?.id ?? "" } : Object.fromEntries([["abrir", "1"], ...MODEL_FIELDS.filter((k) => f.get(k) !== null).map((k) => [`v_${k}`, s(f, k)])]));
+  await run("/admin/ia#modelos", () => saveModel(db, op, modelInputFromForm((k) => f.get(k) as string | null)), (r: SaveModelResult) => `${r.action === "creado" ? "Modelo guardado" : r.action === "actualizado" ? "Modelo actualizado" : "Sin cambios (el modelo ya estaba así)"}: ${r.model.label} [${r.id}] · ${r.model.enabled ? "activo" : "inactivo"} · ${r.model.verified ? "verificado" : "sin verificar"}${r.matchedBy === "proveedor+modelo" ? " · ya existía con ese proveedor y modelo: se actualizó, no se duplicó" : ""}.`, echo);
+}
+export async function aiModelToggleAction(f: FormData) { const { db, op } = await requireOperator(); const on = s(f, "enable") === "1"; await run("/admin/ia#modelos", () => setModelEnabled(db, op, s(f, "id"), on), `Modelo ${s(f, "id")}: ${on ? "activado" : "desactivado"}.`); }
+export async function aiSettingsAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/ia#reglas", () => updateSettings(db, op, { maxAttempts: s(f, "maxAttempts"), maxCallUsd: s(f, "maxCallUsd"), allowPaidFallback: B(f, "allowPaidFallback"), freeForInternal: B(f, "freeForInternal"), callTimeoutMs: s(f, "callTimeoutMs"), alertThresholds: s(f, "alertThresholds") }), "Reglas de enrutamiento guardadas."); }
+/** Configuración inicial CONSERVADORA para pruebas controladas: tope de US$0.05 por llamada y 2 intentos. NO toca precios ni cuotas de los planes ni enciende el router. */
+export async function aiPresetPruebaAction() { const { db, op } = await requireOperator(); await run("/admin/ia#reglas", () => updateSettings(db, op, { maxCallUsd: 0.05, maxAttempts: 2 }), "Configuración de prueba controlada aplicada: máximo US$ 0.05 por llamada y 2 intentos. Las cuotas de los planes y el interruptor del router no cambiaron."); }
+export async function aiPlanLimitAction(f: FormData) { const { db, op } = await requireOperator(); await run("/admin/ia#planes", () => updatePlanLimit(db, op, s(f, "plan"), { monthly_credits: s(f, "monthly_credits"), monthly_budget_usd: s(f, "monthly_budget_usd"), max_offices: s(f, "max_offices"), allowed_tiers: f.getAll("allowed_tiers").map(String), max_level: s(f, "max_level"), max_task_usd: s(f, "max_task_usd") }), `Cuota del plan ${s(f, "plan")} guardada.`); }

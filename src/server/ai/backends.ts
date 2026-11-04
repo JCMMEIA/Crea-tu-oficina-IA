@@ -7,7 +7,9 @@ import type { Sensitivity } from "./types";
  * consultada solo por fragmentos de búsqueda; `usage.cost` se verificó en la documentación oficial (2026-11-04; usage.include está obsoleto y ya no se envía): el costo se toma del proveedor SOLO si viene como número y, si no, se estima con el precio del catálogo.
  */
 export interface BackendResult extends CompleteResult { costUsd?: number; providerName?: string }
-export interface Backend { id: "openrouter" | "anthropic"; configured(): boolean; complete(modelId: string, req: CompleteRequest, opts: { sensitivity: Sensitivity }): Promise<BackendResult> }
+/** `allowedProviders` y `maxPrice` se APLICAN en la API de OpenRouter (provider.only / provider.max_price), no son solo etiquetas. Precios en US$ por millón de tokens. */
+export interface CallOpts { sensitivity: Sensitivity; allowedProviders?: string[]; maxPrice?: { in: number; out: number } }
+export interface Backend { id: "openrouter" | "anthropic"; configured(): boolean; complete(modelId: string, req: CompleteRequest, opts: CallOpts): Promise<BackendResult> }
 export class BackendError extends Error { constructor(message: string, public code: "auth" | "credits" | "bad_request" | "provider") { super(message); this.name = "BackendError"; } }
 
 const toOpenAi = (req: CompleteRequest) => {
@@ -23,10 +25,13 @@ export class OpenRouterBackend implements Backend {
   id = "openrouter" as const;
   constructor(private key = process.env.OPENROUTER_API_KEY ?? "", private base = (process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "")) {}
   configured() { return this.key.length > 10; }
-  async complete(modelId: string, req: CompleteRequest, opts: { sensitivity: Sensitivity }): Promise<BackendResult> {
+  async complete(modelId: string, req: CompleteRequest, opts: CallOpts): Promise<BackendResult> {
+    // FALLA CERRADO: información sensible solo sale hacia proveedores APROBADOS explícitamente (provider.only). Sin lista aprobada no se envía nada.
+    if (opts.sensitivity !== "public" && !(opts.allowedProviders?.length)) throw new BackendError("Este modelo no tiene proveedores aprobados: no se envía información sensible.", "bad_request");
     const body: Record<string, unknown> = { model: modelId, messages: toOpenAi(req), max_tokens: req.maxTokens,
       // Privacidad: interna → solo proveedores que no recolectan datos; confidencial → además retención cero. Fallbacks de proveedor desactivados: el router decide, no el proveedor.
-      provider: { allow_fallbacks: false, ...(opts.sensitivity !== "public" ? { data_collection: "deny" } : {}), ...(opts.sensitivity === "confidential" ? { zdr: true } : {}) } };
+      provider: { allow_fallbacks: false, ...(opts.sensitivity !== "public" ? { data_collection: "deny" } : {}), ...(opts.sensitivity === "confidential" ? { zdr: true } : {}),
+        ...(opts.allowedProviders?.length ? { only: opts.allowedProviders } : {}), ...(opts.maxPrice ? { max_price: { prompt: opts.maxPrice.in, completion: opts.maxPrice.out } } : {}) } };
     if (req.tools.length) body.tools = req.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input_schema } }));
     let res: Response;
     try { res = await fetch(`${this.base}/chat/completions`, { method: "POST", signal: req.signal, headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.key}`, "X-Title": "Crea tu Oficina IA" }, body: JSON.stringify(body) }); }

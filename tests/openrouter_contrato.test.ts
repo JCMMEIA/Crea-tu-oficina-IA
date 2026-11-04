@@ -29,7 +29,7 @@ let srv: http.Server; let base = ""; const seen: { path: string; auth: string | 
 const ok = (text: string, extra: any = {}) => ({ status: 200, json: { id: "gen-1", provider: "ProveedorX", choices: [{ message: { role: "assistant", content: text }, finish_reason: "stop" }], usage: { prompt_tokens: 1200, completion_tokens: 400, ...extra } } });
 beforeEach(async () => { seen.length = 0; behavior = {}; srv = http.createServer((req, res) => { let raw = ""; req.on("data", (d) => (raw += d)); req.on("end", () => { const body = raw ? JSON.parse(raw) : {}; seen.push({ path: req.url ?? "", auth: req.headers.authorization, body }); const r = (behavior[body.model] ?? (() => ok("respuesta")))(body); res.statusCode = r.status; res.setHeader("content-type", "application/json"); res.end(r.raw ?? JSON.stringify(r.json ?? {})); }); }); await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r)); base = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`; });
 afterEach(async () => { await new Promise((r) => srv.close(() => r(null))); });
-const call = (b: OpenRouterBackend, model: string, sens: "public" | "internal" | "confidential" = "public", extra: any = {}) => b.complete(model, { system: "SYS", messages: [{ role: "user", content: "hola" }], tools: [], maxTokens: 100, ...extra }, { sensitivity: sens });
+const call = (b: OpenRouterBackend, model: string, sens: "public" | "internal" | "confidential" = "public", extra: any = {}) => b.complete(model, { system: "SYS", messages: [{ role: "user", content: "hola" }], tools: [], maxTokens: 100, ...extra }, { sensitivity: sens, allowedProviders: ["proveedor-aprobado"] });
 
 describe("adaptador de OpenRouter contra el contrato supuesto", () => {
   it("arma la petición: ruta, autenticación, modelo, mensajes, límite de salida, contabilidad de uso y sin fallbacks de proveedor", async () => {
@@ -75,7 +75,7 @@ describe("adaptador de OpenRouter contra el contrato supuesto", () => {
 describe("router completo sobre el servidor de contrato", () => {
   let db: Db; let a: Actor;
   beforeEach(async () => { db = await newDb(); a = await newCompany(db, "a@x.com", "Café Luna"); await ensurePlanDefaults(db); await db.query("UPDATE agencies SET plan='pro'"); });
-  const M = (o: any) => ({ provider: "openrouter", max_level: "B", price_in_usd_mtok: 0.2, price_out_usd_mtok: 0.8, context_window: 100000, supports_tools: true, supports_json: true, data_policy: "no_training", credit_weight: 1, enabled: true, verified: true, notes: "", tier: "economy", ...o });
+  const M = (o: any) => ({ provider: "openrouter", max_level: "B", price_in_usd_mtok: 0.2, price_out_usd_mtok: 0.8, context_window: 100000, supports_tools: true, supports_json: true, data_policy: "no_training", credit_weight: 1, enabled: true, verified: true, notes: "", tier: "economy", allowed_providers: ["proveedor-aprobado"], ...o });
   const secs = (k: string) => getGuided(k)!.sections.map((s) => `## ${s}\nTexto de ${s} con contenido suficiente.`).join("\n\n");
   it("ejecuta una tarea guiada de punta a punta por HTTP: consumo exacto, costo del proveedor, privacidad enviada y clave ausente de la base", async () => {
     await upsertModel(db, OP, M({ id: "eco", model_id: "vendor/eco", label: "Eco" })); await hireFromTemplate(db, a, "agente-soporte"); behavior["vendor/eco"] = () => ok(secs("responder-cliente"), { cost: 0.0009 });

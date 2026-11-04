@@ -11,6 +11,8 @@ export interface ModelRow {
   id: string; provider: "openrouter" | "anthropic"; model_id: string; label: string; tier: Tier; max_level: Level;
   price_in_usd_mtok: number; price_out_usd_mtok: number; context_window: number; supports_tools: boolean; supports_json: boolean;
   data_policy: DataPolicy; credit_weight: number; enabled: boolean; verified: boolean; notes: string;
+  /** Proveedores/endpoints de OpenRouter APROBADOS para este modelo (slugs). Se envían como `provider.only`: es la restricción que se aplica DE VERDAD en la API. Vacío = no apto para datos sensibles. */
+  allowed_providers: string[];
 }
 export interface AiSettings {
   maxAttempts: number;               // intentos totales por llamada (modelo inicial + fallbacks)
