@@ -99,3 +99,8 @@ Probar un envío y recepción REALES (credenciales de bot de Telegram; cuenta Me
 - **202/202** pruebas con PGlite (`npm run check`) **y 202/202 contra PostgreSQL 16 real** (`TEST_DATABASE_URL=… npx vitest run`).
 - Recorrido en navegador (36 comprobaciones) sobre la app compilada con `NODE_ENV=production` y PostgreSQL real: 36/36. Cabeceras de seguridad, cron/webhook protegidos, respaldo→restauración: verificados a mano.
 - Stripe: probado solo contra servidor simulado. Claude real y Hostinger: **no verificados**.
+
+## Modelo de venta directa y varias oficinas (2026-11-04)
+- **225/225** pruebas con PGlite y **225/225 contra PostgreSQL 16 real**; tipos limpios; sin secretos.
+- Instalador de convivencia: **36/36** (nuevas: `env_set`, `configurar_ventas.sh` solo claves de prueba).
+- E2E en navegador de la compra directa: **63/63** (`scripts/e2e/compra_directa.sh`), con Stripe, Resend y Anthropic **SIMULADOS** localmente. Detalle y límites: `docs/COMPRA_DIRECTA_REPORTE.md`.
