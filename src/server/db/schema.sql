@@ -286,3 +286,14 @@ CREATE INDEX IF NOT EXISTS emails_provider_idx ON emails(provider_id);
 CREATE INDEX IF NOT EXISTS emails_status_idx ON emails(status, created_at);
 -- Identidad de empleados: foto personalizada del cliente (imagen pequeña validada, data URL). El nombre propio usa employees.name.
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo text;
+-- Tareas guiadas: cada ejecución y su resultado, ligados a la oficina (company_id) y a la tarea del motor (tasks). El resultado SIEMPRE es una propuesta generada: no implica publicación ni envío.
+CREATE TABLE IF NOT EXISTS guided_runs (
+  id text PRIMARY KEY, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  employee_id text REFERENCES employees(id) ON DELETE SET NULL, task_id text REFERENCES tasks(id) ON DELETE SET NULL,
+  task_key text NOT NULL, title text NOT NULL, answers jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'en_proceso' CHECK (status IN ('en_proceso','listo','error')),
+  result text, result_edited text, edited_at timestamptz, error text, error_code text,
+  sections_ok boolean, sections_missing jsonb, context_used jsonb,
+  input_tokens int NOT NULL DEFAULT 0, output_tokens int NOT NULL DEFAULT 0, cost_usd numeric NOT NULL DEFAULT 0,
+  created_by text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS guided_runs_company_idx ON guided_runs(company_id, created_at DESC);

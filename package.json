@@ -20,7 +20,8 @@
     "admin:link": "tsx scripts/admin_link.ts",
     "tienda:estado": "tsx scripts/tienda_estado.ts",
     "correo:diagnostico": "tsx scripts/correo_diagnostico.ts",
-    "correo:procesar": "tsx scripts/correo_procesar.ts"
+    "correo:procesar": "tsx scripts/correo_procesar.ts",
+    "tareas:verificar": "tsx scripts/tareas_verificar.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

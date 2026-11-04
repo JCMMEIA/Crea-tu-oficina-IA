@@ -76,7 +76,7 @@ describe("6-7 ejecutar tarea real (proveedor simulado) e historial", () => {
     const got = await getTask(db, owner, t);
     expect(got!.task.result).toBe("Tres guiones...");
     expect(got!.task.skill_version).toBe(1);
-    expect(got!.events.map((e: any) => e.kind)).toEqual(["requested", "started", "completed"]);
+    expect(got!.events.map((e: any) => e.kind)).toEqual(["requested", "started", "context_used", "completed"]);
     expect((await listTasks(db, owner))[0].cost_usd).toBeCloseTo((100 * 3 + 50 * 15) / 1e6);
     expect((await usageSummary(db, owner.companyId)).byEmployee[0].calls).toBe(1);
   });
