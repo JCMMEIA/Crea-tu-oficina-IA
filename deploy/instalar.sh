@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# ⛔ NO USAR EN UN SERVIDOR QUE YA TIENE OTRAS APLICACIONES (p. ej. OpenClaw): este instalador borra el sitio por defecto de Nginx, activa el firewall, puede cambiar el Node global y usa el puerto 3000.
+#    Para ese caso: deploy/convivencia/instalar_convivencia.sh (ver docs/CONVIVENCIA_OPENCLAW.md).
 # Instalación PRIVADA de Crea tu Oficina IA en un servidor Ubuntu 24.04 limpio (VPS). Ejecutar como root:
 #   bash instalar.sh
 # Hace: instala Node 22, PostgreSQL, Nginx y certificado HTTPS; crea las claves; compila; arranca; programa tareas y respaldos.
