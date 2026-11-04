@@ -17,6 +17,8 @@ export const FEATURES: Record<string, Estado> = {
   consumo: "en_revision",            // consumo con límites visibles (PR #3)
   workflows: "proximamente",         // recetas multi-empleado predefinidas
   integraciones: "proximamente",     // publicar/enviar en plataformas externas
+  afiliados: "proximamente",         // programa de afiliados: solo lista de interés; sin enlaces, atribución ni comisiones
+  servicioGestionado: "en_revision", // «Nosotros administramos tu oficina»: por ahora solo solicitud de diagnóstico (contacto), sin proceso definido
 };
 export const estadoDe = (k: keyof typeof FEATURES | string): Estado => FEATURES[k] ?? "proximamente";
 /** ¿Se puede decir que ya funciona? Solo si está «disponible». */

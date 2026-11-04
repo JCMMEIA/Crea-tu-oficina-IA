@@ -9,11 +9,22 @@ import { COMPARACION } from "@/features/funnel/config/comparacion";
 import { FEATURES, estadoDe } from "@/features/funnel/config/disponibilidad";
 import { TIERS, FILAS, PLANES_APROBADOS } from "@/features/funnel/config/planes";
 import { faqItems, NAV, PASOS } from "@/features/funnel/config/content";
+import { CAMINOS, AFILIADOS_PAGE, GESTIONADO_PAGE } from "@/features/funnel/config/caminos";
 
 const root = process.cwd();
 const walk = (d: string): string[] => fs.readdirSync(path.join(root, d), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
 const funnelSrc = walk("src/features/funnel").filter((f) => /\.(ts|tsx)$/.test(f)).map((f) => [f, fs.readFileSync(path.join(root, f), "utf8")] as const);
 
+// Red de seguridad para la integración con el PR #3: solo corre cuando el catálogo de tareas guiadas existe en el árbol (tras fusionarlo).
+const hasCatalog = fs.existsSync(path.join(root, "src/features/tasks/catalog.ts"));
+describe.runIf(hasCatalog)("integración con el catálogo real de tareas guiadas (PR #3)", () => {
+  it("las 8 tareas de la landing coinciden con el catálogo: claves, empleados responsables y secciones", async () => {
+    const { GUIDED_TASKS } = await import("@/features/tasks/catalog");
+    expect(GUIDED_TASKS.map((t: any) => t.key).sort()).toEqual(TAREAS.map((t) => t.key).sort());
+    for (const g of GUIDED_TASKS as any[]) { const l = TAREAS.find((t) => t.key === g.key)!; expect(l.empleadoKey, g.key).toBe(g.employeeKey); expect(l.area, g.key).toBe(g.area); }
+  });
+  it("las funciones que el PR #3 construye siguen etiquetadas «en revisión» hasta cambiarlas a propósito", () => { for (const k of ["cerebro", "tareasGuiadas", "resultados", "consumo"]) expect(estadoDe(k)).toBe("en_revision"); });
+});
 describe("landing: contenido honesto y consistente", () => {
   it("las 8 tareas usan empleados reales del catálogo, con ejemplo completo", () => {
     expect(TAREAS).toHaveLength(8); expect(new Set(TAREAS.map((t) => t.key)).size).toBe(8);
@@ -45,6 +56,12 @@ describe("landing: contenido honesto y consistente", () => {
     const page = fs.readFileSync(path.join(root, "src/features/funnel/FunnelLanding.tsx"), "utf8"); const all = funnelSrc.map(([, s]) => s).join("\n");
     for (const n of NAV) expect(all, n.href).toMatch(new RegExp(`id="${n.href.slice(1)}"`)); expect(PASOS).toHaveLength(7); expect(page).toMatch(/Hero.*Problem.*ProductDemo.*EmployeesSection.*BrainSection.*TasksSection.*WorkflowsSection.*ResultsSection.*HowItWorks.*Comparison/s);
     for (const id of ["como", "producto", "empleados", "cerebro", "tareas", "workflows", "resultados", "comparacion", "planes", "oferta", "confianza", "faq"]) expect(all, id).toMatch(new RegExp(`id="${id}"`));
+  });
+  it("los dos caminos y el servicio secundario: sin precios, comisiones ni promesas; el afiliado es solo lista de interés", () => {
+    expect(CAMINOS.oficina.nombre).toBe("Quiero mi Oficina IA"); expect(CAMINOS.afiliado.nombre).toBe("Quiero ser afiliado"); expect(CAMINOS.gestionado.nombre).toBe("Nosotros administramos tu oficina");
+    const txt = JSON.stringify({ CAMINOS, AFILIADOS_PAGE, GESTIONADO_PAGE }); expect(txt).not.toMatch(/\$\s?\d|\d\s?%|garantizad|ganarás/i); expect(txt).toMatch(/no una aparte|no una tercera/i);
+    expect(estadoDe("afiliados")).toBe("proximamente"); expect(estadoDe("servicioGestionado")).not.toBe("disponible");
+    const code = funnelSrc.map(([, s]) => s).join("\n"); expect(code).not.toMatch(/\/r\/|cto_ref|affiliate_commissions|AFFILIATE_TERMS/); // el programa NO está implementado en esta rama
   });
   it("el hero usa el título y los dos botones pedidos", () => {
     const c = fs.readFileSync(path.join(root, "src/features/funnel/config/content.ts"), "utf8"); expect(c).toContain("Tu empresa merece un equipo completo."); expect(c).toContain("Ahora puedes construirlo con IA.");
