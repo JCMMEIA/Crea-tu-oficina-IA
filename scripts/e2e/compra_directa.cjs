@@ -1,0 +1,115 @@
+// E2E del modelo LANDING → PAGO → OFICINA AUTOMÁTICA → ACCESO → CONFIGURACIÓN → PRIMERA TAREA, con varias oficinas por cuenta.
+// Usa SIMULACIONES locales (scripts/e2e/mocks.cjs) de Stripe, Resend y Anthropic: prueba NUESTRO código de punta a punta, NO las plataformas reales.
+// Ver docs/COMPRA_DIRECTA_REPORTE.md para el comando completo.
+const { chromium } = require("playwright"); const { Client } = require("pg"); const crypto = require("crypto"); const fs = require("fs"); const { execSync } = require("child_process");
+const APP = process.env.E2E_APP || "http://127.0.0.1:3112", MOCK = process.env.E2E_MOCK || "http://127.0.0.1:3199", DBURL = process.env.E2E_DB, WH = "whsec_e2e", CRON = process.env.CRON_SECRET, OUT = process.argv[2] || "/tmp/cd";
+fs.mkdirSync(OUT + "/capturas", { recursive: true }); const res = [];
+const ok = (m) => { console.log("✓", m); res.push({ m, ok: true }); }; const fail = (m) => { console.error("✗", m); res.push({ m, ok: false }); process.exitCode = 1; }; const check = (c, m) => (c ? ok(m) : fail(m));
+const j = async (u) => (await fetch(MOCK + u)).json(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sign = (raw) => { const t = Math.floor(Date.now() / 1000); return `t=${t},v1=${crypto.createHmac("sha256", WH).update(`${t}.${raw}`).digest("hex")}`; };
+const hook = async (ev, bad) => { const raw = JSON.stringify(ev); const r = await fetch(APP + "/api/billing/webhook", { method: "POST", body: raw, headers: { "stripe-signature": bad ? "t=1,v1=00" : sign(raw) } }); return r.status; };
+let n = 100; const checkoutEv = (session, email, name) => { n++; return { id: "evt_" + n, type: "checkout.session.completed", created: 1000 + n, data: { object: { id: session.id, mode: "subscription", payment_status: "paid", client_reference_id: session.form.client_reference_id, metadata: { intent_id: session.form.client_reference_id }, customer: "cus_" + session.id, subscription: "sub_" + session.id, customer_details: { email, name }, amount_total: 89900, currency: "mxn" } } }; };
+const subEv = (type, session, extra = {}) => { n++; return { id: "evt_" + n, type, created: 2000 + n, data: { object: { id: "sub_" + session.id, status: "active", customer: "cus_" + session.id, cancel_at_period_end: false, current_period_end: 2000000000, ...extra } } }; };
+const invEv = (type, id, session) => { n++; return { id: "evt_" + n, type, created: 1500 + n, data: { object: { id, subscription: "sub_" + session.id, customer: "cus_" + session.id, amount_paid: 89900, currency: "mxn", hosted_invoice_url: "https://invoice.stripe.test/" + id, lines: { data: [{ period: { end: 2000000000 } }] } } } }; };
+const tick = async () => (await fetch(APP + "/api/jobs/tick", { method: "POST", headers: { authorization: "Bearer " + CRON } })).json();
+const linkFrom = (mail) => { const m = mail.text.match(/\/acceso\?t=([A-Za-z0-9_-]+)/); return m ? APP + "/acceso?t=" + m[1] : null; };
+(async () => {
+  const db = new Client({ connectionString: DBURL }); await db.connect(); const q = async (s, p) => (await db.query(s, p)).rows; const count = async (t) => Number((await q(`SELECT count(*) n FROM ${t}`))[0].n);
+  const b = await chromium.launch(); const jsErr = []; const mk = async (vp = { width: 1200, height: 800 }) => { const c = await b.newContext({ viewport: vp }); const p = await c.newPage(); p.on("pageerror", (e) => jsErr.push(p.url() + " → " + String(e).slice(0, 120))); return { c, p }; };
+  const shot = (p, nme) => p.screenshot({ path: `${OUT}/capturas/${nme}.png`, fullPage: true });
+
+  // ===== 0. TIENDA CERRADA mientras no se verifique la IA =====
+  let V = await mk(); let p = V.p;
+  await p.goto(APP + "/?utm_source=meta&utm_campaign=lanzamiento&fbclid=abc123"); await p.waitForTimeout(500);
+  check((await p.locator("body").innerText()).includes("Avísame cuando abran"), "tienda CERRADA: la landing no ofrece comprar (IA sin verificar) y lo dice con honestidad");
+  check((await p.locator("[data-testid=cta-comprar-hero]").count()) === 0, "tienda cerrada: no existe el botón «Crear mi oficina IA»");
+  await p.goto(APP + "/comprar"); check(/compra=cerrada/.test(p.url()) && (await count("checkout_intents")) === 0, "/comprar con la tienda cerrada NO crea intenciones ni abre pagos");
+  // ===== 1. Operador: acceso sin registro, verificar IA, abrir tienda =====
+  const OP = await mk(); const opLink = execSync("npx tsx scripts/admin_link.ts jose@ejemplo.test", { env: process.env }).toString().match(/https?:\/\/\S+/)[0];
+  await OP.p.goto(opLink); await OP.p.click("[data-testid=enter-link]"); await OP.p.waitForURL(/admin\/conversion/); ok("operador entra con enlace de un solo uso (sin registro ni contraseña)");
+  check((await OP.p.locator("[data-testid=gate]").innerText()).includes("IA no está verificada"), "panel: la tienda está cerrada por «IA no verificada»");
+  await OP.p.click("[data-testid=verify-ai]"); await OP.p.waitForSelector("text=respondió"); check((await j("/__ai")).calls === 1, "«Verificar IA» hizo UNA llamada al modelo (simulado)");
+  check((await OP.p.locator("[data-testid=gate]").innerText()).includes("ABIERTA"), "panel: con IA verificada, cobros, precio y correo, la tienda se ABRE");
+  const reuse = await fetch(opLink.replace(/\?.*/, "") + "?t=" + opLink.split("t=")[1]); void reuse;
+
+  // ===== 2. Visitante: landing → CTA → Stripe, sin registro =====
+  V = await mk(); p = V.p; await p.goto(APP + "/?utm_source=meta&utm_campaign=lanzamiento&fbclid=abc123"); await p.waitForTimeout(500);
+  const land = await p.locator("body").innerText(); check(land.includes("Crear mi oficina IA") && land.includes("$899"), "landing abierta: botón «Crear mi oficina IA» y precio configurable ($899 MXN/mes)");
+  check(!/registr(a|e)te/i.test(land.replace(/Sin registro previo/gi, "")), "la landing no pide registrarse"); await shot(p, "01-landing");
+  await p.click("[data-testid=cta-comprar-hero]"); await p.waitForURL(/\/pay\/cs_test_1/); ok("el botón lleva DIRECTO al pago de Stripe (simulado)");
+  const S1 = (await j("/__sessions"))[0]; check(S1.form.mode === "subscription" && S1.form["line_items[0][price_data][unit_amount]"] === "89900" && !S1.form.customer_email, "sesión de pago: suscripción mensual de $899 MXN, sin correo previo (Stripe lo pide)");
+  const it = (await q("SELECT source,utm,checkout_session_id FROM checkout_intents"))[0]; check(it.source === "meta" && it.utm.utm_campaign === "lanzamiento" && it.checkout_session_id === "cs_test_1", "la intención guarda la fuente del anuncio (meta / lanzamiento)");
+  check((await count("users")) === 1 && (await count("agencies")) === 0 && (await count("orders")) === 0, "ANTES del pago no existe ninguna agencia, pedido ni cuenta de comprador (solo el operador)");
+  // ===== 3. Webhook: firma, idempotencia, entrega =====
+  const ev1 = checkoutEv(S1, "Comprador1@Ejemplo.test", "Laura Uno");
+  check((await hook(ev1, true)) === 400 && (await count("agencies")) === 0, "webhook con firma inválida: rechazado (400) y no crea nada");
+  check((await hook(ev1)) === 200, "webhook firmado: aceptado"); check((await hook(ev1)) === 200 && (await Promise.all([hook(ev1), hook(ev1), hook(ev1)])).every((s) => s === 200), "el mismo pago reenviado 5 veces (4 en paralelo): responde 200");
+  check((await count("agencies")) === 1 && (await count("orders")) === 1 && (await q("SELECT count(*)::int n FROM users WHERE email='comprador1@ejemplo.test'"))[0].n === 1, "IDEMPOTENCIA: una sola agencia, un solo pedido, una sola cuenta");
+  const ag1 = (await q("SELECT id,plan,status,billing_status FROM agencies"))[0]; check(ag1.plan === "emprendedor" && ag1.status === "activa" && ag1.billing_status === "pagado", "agencia privada creada con su plan");
+  await hook(invEv("invoice.paid", "in_001", S1)); await tick(); await sleep(300);
+  let mails = await j("/__mails"); const m1 = mails.filter((m) => m.to[0] === "comprador1@ejemplo.test"); check(m1.length === 1 && m1[0].subject.includes("está lista"), "UN correo de bienvenida con el enlace de acceso (reenviar el pago no duplicó correos)");
+  const link1 = linkFrom(m1[0]); check(!!link1, "el correo contiene un enlace de acceso temporal"); check(!JSON.stringify(await q("SELECT * FROM emails")).includes(link1.split("t=")[1]), "el token del enlace NO se guarda en la base (solo su hash)");
+  // ===== 4. Acceso: botón de confirmación, un solo uso =====
+  await p.goto(link1); check((await p.locator("body").innerText()).includes("Pulsa el botón"), "abrir el enlace NO lo gasta: pide pulsar «Entrar»");
+  const V2 = await mk(); await V2.p.goto(link1); await V2.p.goto(link1); check((await count("access_links")) >= 1 && (await q("SELECT count(*)::int n FROM access_links WHERE used_at IS NOT NULL"))[0].n === 1, "dos aperturas del enlace no lo canjean (solo cuenta el botón)"); await V2.c.close();
+  await p.click("[data-testid=enter-link]"); await p.waitForURL(/empezar/); ok("el enlace entra directo al asistente de configuración");
+  const V3 = await mk(); await V3.p.goto(link1); await V3.p.click("[data-testid=enter-link]"); await V3.p.waitForSelector("text=caducó o ya se usó"); ok("el MISMO enlace usado por segunda vez falla (un solo uso)"); await V3.c.close();
+  // ===== 5. Onboarding sencillo =====
+  await p.fill("#name", "Tienda Luna"); await p.selectOption("[data-testid=wizard-negocio]", "ecommerce"); await shot(p, "02-onboarding-paso1"); await p.click("[data-testid=next]"); await p.waitForURL(/paso=2/);
+  check((await p.locator("input[name=servicio]:checked").count()) === 3, "paso 2: la plantilla de «Comercio electrónico» deja 3 servicios ya marcados (valores predeterminados)"); await p.click("[data-testid=next]"); await p.waitForURL(/paso=3/);
+  check((await p.locator("input[name=empleado]:checked").count()) >= 3, "paso 3: empleados recomendados ya marcados"); await p.click("[data-testid=next]"); await p.waitForURL(/paso=4/); await p.click("[data-testid=next]"); await p.waitForURL(/paso=5/); await p.click("[data-testid=next]"); await p.waitForURL(/paso=6/);
+  await p.click("[data-testid=practice]"); await p.waitForSelector("[data-testid=practice-result]");
+  const pr = await p.locator("[data-testid=practice-result]").innerText(); check(pr.includes("SIMULADA del modelo") && !pr.includes("Ejemplo ilustrativo"), "PRIMERA TAREA: la ejecutó el flujo de IA real (proveedor Anthropic apuntando al servidor simulado) y NO es un ejemplo ilustrativo"); await shot(p, "03-primera-tarea");
+  check((await q("SELECT count(*)::int n FROM usage_events WHERE input_tokens>0"))[0].n >= 1, "el consumo de IA quedó registrado en la oficina"); await p.click("[data-testid=finish]"); await p.waitForURL(/agencia/);
+  check((await p.locator("[data-testid=panel-nueva-oficina]").count()) === 1 && (await p.locator("[data-testid=panel-mis-oficinas]").count()) === 1, "panel principal: botones muy visibles NUEVA OFICINA IA y MIS OFICINAS"); await shot(p, "04-panel");
+  // ===== 6. Mis oficinas + NUEVA OFICINA (pago adicional, misma cuenta) =====
+  await p.click("[data-testid=panel-mis-oficinas]"); await p.waitForURL(/oficinas/); check((await p.locator("[data-office-name]").count()) >= 1 && (await p.innerText("body")).includes("Tienda Luna"), "MIS OFICINAS lista la oficina con nombre, negocio, estado, plan y empleados"); await shot(p, "05-mis-oficinas");
+  await p.click("[data-testid=btn-nueva-oficina]"); await p.waitForURL(/oficinas\/nueva/); await p.fill("[data-testid=nueva-nombre]", "Oficina Dos"); await p.selectOption("[data-testid=nueva-negocio]", "servicios-locales"); await p.click("[data-testid=nueva-next]"); await p.waitForURL(/paso=2/);
+  check((await p.locator("input[name=servicio]:checked").count()) === 2, "nueva oficina: servicios predeterminados según el negocio"); await p.click("[data-testid=nueva-next]"); await p.waitForURL(/paso=3/); await p.click("[data-testid=nueva-next]"); await p.waitForURL(/paso=4/);
+  const url4 = p.url(); check((await p.locator("[data-testid=precio-nueva]").innerText()).includes("$899"), "muestra el PRECIO antes de confirmar la nueva compra"); check((await count("agencies")) === 1, "antes de pagar NO se crea la segunda oficina"); await shot(p, "06-nueva-oficina-confirmar");
+  await p.click("[data-testid=pagar-nueva]"); await p.waitForURL(/\/pay\/cs_test_2/); const S2 = (await j("/__sessions"))[1]; check(S2.form.customer_email === "comprador1@ejemplo.test", "el pago adicional va con el correo de la cuenta existente");
+  await p.goto(url4); await p.click("[data-testid=pagar-nueva]"); await p.waitForURL(/\/pay\/cs_test_2/); check((await j("/__sessions")).length === 2, "ANTI DOBLE COBRO: pulsar «Pagar» otra vez reutiliza el MISMO pago abierto (no abre otro)");
+  await hook(checkoutEv(S2, "comprador1@ejemplo.test", "Laura Uno")); await tick(); await sleep(300);
+  check((await q("SELECT count(*)::int n FROM users WHERE email='comprador1@ejemplo.test'"))[0].n === 1 && (await q("SELECT count(*)::int n FROM agency_members m JOIN users u ON u.id=m.user_id WHERE u.email='comprador1@ejemplo.test'"))[0].n === 2, "la segunda compra se vincula a la MISMA cuenta (sin duplicar usuarios): ahora tiene 2 oficinas");
+  const ag2 = (await q("SELECT id,name,business_type FROM agencies WHERE name='Oficina Dos'"))[0]; check(ag2 && ag2.business_type === "servicios-locales", "la oficina nueva nació con el nombre y negocio elegidos antes de pagar");
+  await p.goto(APP + "/oficinas"); check((await p.locator("[data-office-name]").count()) === 2, "MIS OFICINAS muestra las dos"); await shot(p, "07-dos-oficinas");
+  await p.click(`[data-testid=enter-${ag2.id}]`); await p.waitForURL(/empezar|agencia/); check((await p.innerText("body")).includes("Oficina Dos") || /empezar/.test(p.url()), "«Entrar» cambia a la otra oficina con un clic");
+  await p.goto(APP + "/agencia/activacion"); check(!(await p.innerText("body")).includes("Tienda Luna"), "en la oficina 2 no aparece nada de la oficina 1");
+  // ===== 7. Aislamiento entre COMPRADORES =====
+  const B2 = await mk(); await B2.p.goto(APP + "/?utm_source=meta"); await B2.p.click("[data-testid=cta-comprar-hero]"); await B2.p.waitForURL(/\/pay\/cs_test_3/); const S3 = (await j("/__sessions"))[2];
+  await hook(checkoutEv(S3, "comprador2@ejemplo.test", "Beto Dos")); await tick(); await sleep(300); const m2 = (await j("/__mails")).filter((m) => m.to[0] === "comprador2@ejemplo.test"); await B2.p.goto(linkFrom(m2[0])); await B2.p.click("[data-testid=enter-link]"); await B2.p.waitForURL(/empezar/);
+  await B2.p.fill("#name", "Oficina de Beto"); await B2.p.click("[data-testid=next]"); await B2.p.waitForURL(/paso=2/);
+  const ag1Co = (await q("SELECT id FROM companies WHERE agency_id=$1 LIMIT 1", [ag1.id]))[0].id; const betoAg = (await q("SELECT a.id FROM agencies a JOIN agency_members m ON m.agency_id=a.id JOIN users u ON u.id=m.user_id WHERE u.email='comprador2@ejemplo.test'"))[0].id;
+  await B2.c.addCookies([{ name: "cto_office", value: ag1.id, url: APP }, { name: "cto_company", value: ag1Co, url: APP }]);
+  await B2.p.goto(APP + "/agencia"); const t2 = await B2.p.innerText("body"); check(t2.includes("Oficina de Beto") && !t2.includes("Tienda Luna"), "AISLAMIENTO: Beto con la cookie de la oficina de Laura sigue viendo SU oficina");
+  await B2.p.goto(APP + `/agencia/clientes/${ag1Co}`); check(!(await B2.p.innerText("body")).includes("Oficina de práctica") || /no (se )?encontr/i.test(await B2.p.innerText("body")) || !/clientes\//.test(B2.p.url()), "AISLAMIENTO: la ficha de un cliente de Laura no se abre para Beto");
+  await B2.p.goto(APP + `/actividad`); check(!(await B2.p.innerText("body")).includes("Café Luna"), "AISLAMIENTO: la actividad de Beto no muestra las tareas de Laura");
+  const tasksL = (await q("SELECT t.id FROM tasks t JOIN companies c ON c.id=t.company_id WHERE c.agency_id=$1 LIMIT 1", [ag1.id]))[0]; await B2.p.goto(APP + `/actividad/${tasksL.id}`); check(!(await B2.p.innerText("body")).includes("SIMULADA del modelo"), "AISLAMIENTO: el resultado de una tarea de Laura no se abre para Beto"); await shot(B2.p, "08-aislamiento");
+  check((await q("SELECT count(*)::int n FROM agency_members WHERE agency_id=$1 AND user_id IN (SELECT id FROM users WHERE email='comprador2@ejemplo.test')", [ag1.id]))[0].n === 0, "Beto no es miembro de ninguna oficina de Laura");
+  // ===== 8. Pausar / cancelar UNA oficina =====
+  await p.goto(APP + "/oficinas"); await p.click(`[data-testid=pause-${ag1.id}]`); await p.waitForSelector("text=Oficina pausada"); check((await j("/__subcalls")).some((c) => c.form["pause_collection[behavior]"] === "void"), "pausar detiene también el cobro en la pasarela");
+  check((await q("SELECT status FROM agencies WHERE id=$1", [ag1.id]))[0].status === "pausada" && (await q("SELECT status FROM agencies WHERE id=$1", [ag2.id]))[0].status === "activa", "la oficina 1 quedó pausada y la 2 sigue activa");
+  const pausedTask = async (agId) => { await p.click(`[data-testid=enter-${agId}]`); await p.waitForURL(/empezar|agencia/); await p.goto(APP + "/agencia/tarea"); const opts = await p.locator("[data-testid=task-target] option").count(); if (!opts) return "sin-empleados"; await p.selectOption("[data-testid=task-target]", { index: 0 }); await p.fill("[data-testid=task-text]", "Escribe un anuncio para el fin de semana " + Math.random()); await p.click("[data-testid=task-send]"); await p.waitForURL(/actividad/); await p.waitForTimeout(800); return p.innerText("body"); };
+  const tPaused = await pausedTask(ag1.id); check(typeof tPaused === "string" && /pausada/i.test(tPaused), "la oficina PAUSADA no ejecuta tareas de IA: «Esta oficina está pausada…»");
+  const aiBefore = (await j("/__ai")).calls; await p.goto(APP + "/oficinas"); await p.click(`[data-testid=resume-${ag1.id}]`); await p.waitForSelector("text=Oficina reanudada");
+  await hook(subEv("customer.subscription.deleted", S2)); await p.goto(APP + "/oficinas"); check((await q("SELECT status FROM agencies WHERE id=$1", [ag2.id]))[0].status === "cancelada" && (await q("SELECT status FROM agencies WHERE id=$1", [ag1.id]))[0].status === "activa", "cancelación de la suscripción de la oficina 2: solo ella queda «cancelada»; la 1 sigue activa"); await shot(p, "09-estados");
+  const t1 = await pausedTask(ag1.id); check(!/pausada|cancelada/i.test(String(t1).slice(0, 4000).replace(/Mis oficinas/g, "")) || (await j("/__ai")).calls > aiBefore, "la oficina 1 reanudada vuelve a trabajar con IA (la cancelada de al lado no la afecta)");
+  await p.goto(APP + "/agencia/plan"); check((await p.locator("[data-testid=comprobantes]").innerText()).includes("Ver comprobante"), "«Mi plan» muestra el comprobante del cobro (invoice.paid)");
+  await hook(invEv("invoice.payment_failed", "in_002", S1)); await p.goto(APP + "/agencia"); check((await p.locator("[data-testid=billing-banner]").count()) === 1, "pago fallido: aviso visible «No pudimos cobrar tu última mensualidad»"); await tick(); await sleep(200);
+  check((await j("/__mails")).some((m) => m.subject.includes("No pudimos cobrar")), "pago fallido: correo transaccional enviado");
+  // ===== 9. Recuperar acceso =====
+  const R = await mk(); await R.p.goto(APP + "/recuperar"); await R.p.fill("#e", "nadie@ejemplo.test"); await R.p.click("[data-testid=recover-submit]"); await R.p.waitForSelector("text=Si ese correo tiene una cuenta"); const txtA = await R.p.innerText("body");
+  await R.p.fill("#e", "comprador1@ejemplo.test"); await R.p.click("[data-testid=recover-submit]"); await R.p.waitForSelector("text=Si ese correo tiene una cuenta"); await R.p.waitForTimeout(400); const txtB = await R.p.innerText("body"); check(txtA === txtB && txtA.includes("Si ese correo tiene una cuenta"), "recuperar acceso: la respuesta es IDÉNTICA exista o no el correo (no revela cuentas)");
+  await sleep(1500); await tick(); await sleep(300); const rm = (await j("/__mails")).filter((m) => m.to[0] === "comprador1@ejemplo.test" && m.subject.includes("enlace de acceso")); check(rm.length === 1, "solo la cuenta real recibió el enlace de recuperación (correos de acceso recibidos: " + (await j("/__mails")).filter((m) => m.subject.includes("enlace de acceso")).map((m) => m.to[0]).join(",") + ")");
+  await R.p.goto(linkFrom(rm[0])); await R.p.click("[data-testid=enter-link]"); await R.p.waitForURL(/oficinas/); ok("el enlace de recuperación entra a «Mis oficinas» (tiene 2 oficinas)"); await R.c.close();
+  // ===== 10. Panel de conversión =====
+  await OP.p.goto(APP + "/admin/conversion"); const tv = async (id) => (await OP.p.locator(`[data-testid=${id}] div:nth-child(2)`).innerText()).trim();
+  check((await tv("c-visitantes")) !== "0" && (await tv("c-clics")) >= "2" && (await tv("c-pagos")) === "3" && (await tv("c-entregadas")) === "3", `dashboard: visitantes=${await tv("c-visitantes")}, clics=${await tv("c-clics")}, pagos confirmados=${await tv("c-pagos")}, entregadas=${await tv("c-entregadas")}`);
+  check((await tv("c-activadas")) === "1", "dashboard: 1 oficina activada (con empleado y tarea completada)"); check((await tv("c-cac")) === "Sin datos", "dashboard: costo de adquisición = «Sin datos» mientras no registres gasto (no se inventa)");
+  await OP.p.fill("[data-testid=spend-amount]", "1000"); await OP.p.evaluate(() => { const d = document.querySelector("#d"); d.value = new Date().toISOString().slice(0, 10); }); await OP.p.click("[data-testid=spend-save]"); await OP.p.waitForTimeout(1500); await OP.p.goto(APP + "/admin/conversion");
+  const cac = await tv("c-cac"); check(/500/.test(cac), `CAC con $1,000 de gasto y 2 primeras compras (la 3.ª fue adicional… fuente meta) = ${cac}`); await shot(OP.p, "10-dashboard-conversion");
+  check((await OP.p.locator("[data-testid=orders] tbody tr").count()) === 3, "tabla de pedidos con los 3 pagos");
+  check(jsErr.length === 0, "0 errores de JavaScript en navegador" + (jsErr.length ? ": " + jsErr.slice(0, 2).join(" | ") : ""));
+  fs.writeFileSync(OUT + "/e2e_compra_directa.json", JSON.stringify({ fecha: new Date().toISOString(), nota: "Stripe, Resend y Anthropic SIMULADOS localmente", resultados: res }, null, 1)); await b.close(); await db.end();
+  console.log(res.filter((r) => r.ok).length + "/" + res.length + " verificaciones OK");
+})().catch((e) => { console.error("ERROR E2E:", e); process.exit(1); });

@@ -11,7 +11,7 @@ const base = "http://localhost:3111"; const ok = (m) => console.log("✓", m); c
   // ---- Landing, lead, privacidad, gracias
   let { c: c0, p } = await mk();
   await p.goto(base + "/?utm_source=meta&utm_campaign=prueba&fbclid=abc123");
-  (await p.locator("h1").innerText()).includes("Crea tu propia agencia de inteligencia artificial, aunque nunca hayas programado") ? ok("landing: título") : fail("título");
+  (await p.locator("h1").innerText()).includes("Tu oficina de empleados de inteligencia artificial, lista en minutos") ? ok("landing: título") : fail("título");
   await p.fill("#lead-email", "lead@example.com"); await p.fill("#lead-name", "Lead Prueba");
   await p.click("[data-testid=lead-submit]"); await p.waitForTimeout(800); /gracias/.test(p.url()) ? fail("el formulario pasó sin consentimiento") : ok("sin consentimiento el formulario NO se envía");
   await p.check("[name=consent]"); await p.click("[data-testid=lead-submit]"); await p.waitForURL(/gracias/); ok("con consentimiento → /gracias");
