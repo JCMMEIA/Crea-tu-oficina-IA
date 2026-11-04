@@ -50,6 +50,7 @@ const g = globalThis as unknown as { __ctoDb?: Promise<Db> };
 export function getDb(): Promise<Db> {
   g.__ctoDb ??= process.env.DATABASE_URL
     ? createPgDb(process.env.DATABASE_URL)
-    : createPgliteDb(path.join(process.cwd(), ".data", "pglite"));
+  // `turbopackIgnore`: sin él, `next build` (Turbopack) intenta LEER el directorio .data al compilar y falla con «Permission denied» si no es del usuario que compila (incidente del instalador del router). No cambia el comportamiento en ejecución.
+    : createPgliteDb(path.join(/*turbopackIgnore: true*/ process.cwd(), ".data", "pglite"));
   return g.__ctoDb;
 }

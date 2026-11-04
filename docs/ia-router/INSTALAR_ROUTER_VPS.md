@@ -21,13 +21,21 @@ sudo bash /tmp/instalar_router.sh --verificar --commit <SHA>
 ```
 (Desde /tmp el script usa `lib.sh` y `openclaw_check.sh` de la instalación actual.) Debe decir: árbol limpio, router apagado, fast-forward, **«todos los archivos están en la lista permitida»**, y cuántos commits de `main` llegan además.
 
-## 3. Instalación con reversión automática
+## 3. Instalación v2 (release aparte, intercambio atómico, reversión sin recompilar)
+> Versión corregida tras el incidente `docs/incidentes/2026-11-INSTALACION_ROUTER_502.md`. **No uses el instalador v1.**
 ```
 sudo bash /tmp/instalar_router.sh --commit <SHA>             # simulacro completo: muestra el plan
 sudo bash /tmp/instalar_router.sh --aplicar --commit <SHA>
 ```
-Pide escribir `SI` en cada paso: (1) foto de OpenClaw + respaldo + copia del env (600); (2) `git checkout -B router-instalado <SHA>` (la rama anterior queda intacta); (3) `npm ci` + build con tope de memoria; (4) **único reinicio de `crea-oficina`**; (5) comprueba salud, `AI_ROUTER` apagado, las 7 tablas `ai_*` y OpenClaw. Si algo falla, **vuelve solo** a la versión anterior. Volver a mano: `sudo bash /tmp/instalar_router.sh --revertir`.
-No escribe en `/etc/crea-oficina/env`, no llama a OpenRouter, no toca Stripe, Resend, datos de clientes ni OpenClaw.
+Comprobaciones previas (si alguna falla, no cambia nada): árbol limpio, `AI_ROUTER` apagado, **existe `.next/BUILD_ID` y la app responde ahora**, espacio libre ≥ 2 GB, release y app en el mismo sistema de archivos, commit exacto, fast-forward y lista de archivos permitida.
+Pasos (cada uno pide escribir `SI`):
+1. Foto de OpenClaw + respaldo (`crea-respaldo.service`) + copia del env (600).
+2. **Release aparte** en `/opt/crea-oficina/releases/…` creado con `git archive` (sin `.data`) y compilación allí (Turbopack; si falla, webpack). **La web en marcha no se toca.** Si falla: se borra solo ese release y termina (código 1).
+3. Activación por renombrado: `.next` → `.next.prev.<fecha>` y el nuevo ocupa su lugar (y `node_modules` solo si cambia el lock); `git checkout -B router-instalado`.
+4. Comprueba `.next/BUILD_ID` y reinicia **solo** `crea-oficina` (único reinicio).
+5. Verifica salud, `AI_ROUTER` apagado, las 7 tablas `ai_*` y OpenClaw.
+Si algo falla: restaura `.next.prev` (**sin recompilar**), vuelve el código, comprueba `BUILD_ID`, reinicia y verifica (código 1). Si no hubiera ninguna versión compilada, **no reinicia** y sale con código 2 mostrando la recuperación manual: `cd /opt/crea-oficina/app && sudo -u ctoapp env PATH=/opt/crea-oficina/node/bin:$PATH npm run build -- --webpack && sudo systemctl restart crea-oficina`.
+Volver a mano: `sudo bash /tmp/instalar_router.sh --revertir` (intercambia carpetas, no compila). Tras confirmar que todo va bien, borra a mano las carpetas `.next.prev.*` (y `node_modules.prev.*`) que ya no necesites. No toca `.data`, bases de datos, env, Stripe, Resend ni OpenClaw.
 
 ## 4. Comprobar que OpenClaw sigue funcionando
 El instalador guarda una foto «antes» y la compara «después» (proceso, PID, hora de inicio, unidad, reinicios, respuesta HTTP en el puerto 18789, memoria). A mano, solo lectura:
