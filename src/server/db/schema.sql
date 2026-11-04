@@ -297,3 +297,23 @@ CREATE TABLE IF NOT EXISTS guided_runs (
   input_tokens int NOT NULL DEFAULT 0, output_tokens int NOT NULL DEFAULT 0, cost_usd numeric NOT NULL DEFAULT 0,
   created_by text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS guided_runs_company_idx ON guided_runs(company_id, created_at DESC);
+-- Mi Plan de Libertad: datos PERSONALES y sensibles. Aislados por usuario (user_id) dentro de la oficina; el contenido va cifrado en la aplicación (AES-256-GCM).
+-- Nadie más que la persona dueña del plan puede leerlos: ni administradores de la oficina, ni la agencia, ni operadores.
+CREATE TABLE IF NOT EXISTS libertad_plans (
+  id text PRIMARY KEY, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE, user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  depth text NOT NULL DEFAULT 'corto' CHECK (depth IN ('corto','profundo')), data_enc text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE (company_id, user_id));
+CREATE TABLE IF NOT EXISTS libertad_versions (
+  id text PRIMARY KEY, plan_id text NOT NULL REFERENCES libertad_plans(id) ON DELETE CASCADE, n int NOT NULL, label text NOT NULL DEFAULT '',
+  data_enc text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE (plan_id, n));
+CREATE TABLE IF NOT EXISTS libertad_checkins (
+  id text PRIMARY KEY, plan_id text NOT NULL REFERENCES libertad_plans(id) ON DELETE CASCADE, month text NOT NULL CHECK (month ~ '^[0-9]{4}-[0-9]{2}$'),
+  data_enc text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE (plan_id, month));
+CREATE TABLE IF NOT EXISTS libertad_consents (
+  user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE, kind text NOT NULL CHECK (kind IN ('guardar','ia_externa')),
+  granted_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz, PRIMARY KEY (user_id, company_id, kind));
+-- Objetivos operativos que la persona AUTORIZÓ compartir con su oficina (texto corto escrito/aprobado por ella; sin cifras personales).
+CREATE TABLE IF NOT EXISTS libertad_shared_goals (
+  id text PRIMARY KEY, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE, user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text text NOT NULL CHECK (char_length(text) BETWEEN 3 AND 300), approved_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS libertad_shared_goals_idx ON libertad_shared_goals(company_id);

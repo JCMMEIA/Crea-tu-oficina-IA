@@ -35,6 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <small>Preparar</small>
         <Link href="/conexiones">🔌 Conecta tus aplicaciones</Link>
         <Link href="/cerebro">🧠 Cerebro de mi empresa</Link>
+        <Link href="/libertad">🧭 Mi Plan de Libertad</Link>
         <Link href="/consumo">📊 Mi consumo</Link>
         <Link href="/conocimiento">📚 Lo que debe saber mi negocio</Link>
         <Link href="/celular">📱 Mi oficina en el celular</Link>
