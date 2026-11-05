@@ -31,7 +31,8 @@ describe.skipIf(process.getuid?.() !== 0)("instalar_router.sh (verificación y s
   it("se niega si el árbol de trabajo tiene cambios locales", () => { fs.writeFileSync(path.join(APP, "sucio.txt"), "x"); const r = run(["--verificar"]); fs.rmSync(path.join(APP, "sucio.txt")); expect(r.code).not.toBe(0); expect(r.out).toMatch(/cambios locales/); });
   it("se niega si el commit indicado no es el de la rama (pudo cambiar tras la revisión)", () => { const r = run(["--verificar", "--commit", "0000000"]); expect(r.code).not.toBe(0); expect(r.out).toMatch(/no a 0000000/); });
   it("se niega si la rama no desciende de lo instalado (no hay fast-forward)", () => { const r = run(["--verificar", "--rama", "claude/divergente"]); expect(r.code).not.toBe(0); expect(r.out).toMatch(/NO desciende/); });
-  it("--aplicar sin --commit se niega antes de cambiar nada", () => { const h = head(); const r = run(["--aplicar"]); expect(r.code).not.toBe(0); expect(r.out).toMatch(/indica el commit revisado/); expect(head()).toBe(h); });
+  it("--aplicar sin --rama se niega antes de cambiar nada (la rama por omisión es solo para el simulacro)", () => { const h = head(); const r = run(["--aplicar", "--commit", shaOk]); expect(r.code).not.toBe(0); expect(r.out).toMatch(/indica la rama revisada con --rama/); expect(head()).toBe(h); const s = run(["--commit", shaOk]); expect(s.out).toMatch(/No indicaste --rama/); });
+  it("--aplicar sin --commit se niega antes de cambiar nada", () => { const h = head(); const r = run(["--aplicar", "--rama", "claude/router-ia-minimo"]); expect(r.code).not.toBe(0); expect(r.out).toMatch(/indica el commit revisado/); expect(head()).toBe(h); });
 });
 describe("instalar_router.sh (revisión estática de seguridad)", () => {
   const src = fs.readFileSync(SCRIPT, "utf8");

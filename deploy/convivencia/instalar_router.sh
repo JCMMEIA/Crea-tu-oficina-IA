@@ -2,7 +2,7 @@
 # Instala en el VPS SOLO el paquete mínimo del router de IA (rama claude/router-ia-minimo) con respaldo, simulacro y reversión automática.
 #   sudo bash instalar_router.sh                        → SIMULACRO: verifica y muestra TODO lo que cambiaría. No cambia nada.
 #   sudo bash instalar_router.sh --verificar            → solo comprobaciones de solo lectura
-#   sudo bash instalar_router.sh --aplicar --commit SHA → instala EXACTAMENTE ese commit. Pide escribir SI antes de cada paso que cambia el servidor.
+#   sudo bash instalar_router.sh --aplicar --rama RAMA --commit SHA → instala EXACTAMENTE ese commit de esa rama (ambos obligatorios). Pide escribir SI antes de cada paso que cambia el servidor.
 #   sudo bash instalar_router.sh --revertir             → vuelve a la versión anterior guardada (intercambio de carpetas: NO recompila)
 #
 # DISEÑO (v2, tras el incidente de la primera instalación):
@@ -17,8 +17,11 @@ set -uo pipefail; AQUI="$(cd "$(dirname "$0")" && pwd)"; cd /
 [ -f "$AQUI/lib.sh" ] || AQUI="${CREA_APP_DIR:-/opt/crea-oficina/app}/deploy/convivencia"; [ -f "$AQUI/lib.sh" ] || { echo "No encuentro lib.sh (¿está instalada la aplicación?)"; exit 1; }
 . "$AQUI/lib.sh"
 APP_DIR="${CREA_APP_DIR:-$APP_DIR}"; ENV_FILE="${CREA_ENV_FILE:-$ENV_FILE}"; STATE="${CREA_STATE:-$STATE}"; REL_DIR="${CREA_RELEASES:-$BASE/releases}"; BACKUPS="${CREA_BACKUPS:-$BACKUPS}"
-RAMA="claude/router-ia-minimo"; COMMIT=""; MODO=simulacro
-while [ $# -gt 0 ]; do case "$1" in --aplicar) MODO=aplicar; DRY=0;; --verificar) MODO=verificar;; --revertir) MODO=revertir; DRY=0;; --rama) RAMA="$2"; shift;; --commit) COMMIT="$2"; shift;; *) die "Opción desconocida: $1";; esac; shift; done
+RAMA="claude/router-ia-minimo"; RAMA_EXPLICITA=0; COMMIT=""; MODO=simulacro
+while [ $# -gt 0 ]; do case "$1" in --aplicar) MODO=aplicar; DRY=0;; --verificar) MODO=verificar;; --revertir) MODO=revertir; DRY=0;; --rama) RAMA="$2"; RAMA_EXPLICITA=1; shift;; --commit) COMMIT="$2"; shift;; *) die "Opción desconocida: $1";; esac; shift; done
+# Para INSTALAR hay que decir EXPLÍCITAMENTE rama y commit (el valor por omisión de la rama es solo para el simulacro y no debe usarse para instalar otra cosa).
+[ "$MODO" = aplicar ] && [ "$RAMA_EXPLICITA" != 1 ] && die "Para --aplicar indica la rama revisada con --rama (por ejemplo: --rama claude/humo-sonnet-seguro). No se instala nada."
+[ "$RAMA_EXPLICITA" != 1 ] && [ "$MODO" != revertir ] && warn "No indicaste --rama: se usa claude/router-ia-minimo (valor por omisión, solo informativo). Indica --rama con la rama que quieres revisar."
 [ "$(id -u)" = 0 ] || die "Ejecútalo como root:  sudo bash $0 [--verificar|--aplicar --commit SHA|--revertir]"
 [ -d "$APP_DIR/.git" ] || die "No encuentro la instalación en $APP_DIR."; [ -f "$ENV_FILE" ] || die "No existe $ENV_FILE."
 as_app() { if [ -n "${CREA_SIN_USUARIO:-}" ]; then env "$@"; else runuser -u "$APP_USER" -- env HOME="$HOME_DIR" PATH="$NODE_DIR/bin:/usr/bin:/bin" "$@"; fi; }
