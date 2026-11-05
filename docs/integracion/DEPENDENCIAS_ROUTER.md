@@ -10,7 +10,7 @@ Base de producción: `main` (`a4c9e67`, incluye el PR #2). Ramas auditadas: PR #
 | Integración con el motor | `src/server/models/index.ts` (`getProvider`), `src/server/tasks/index.ts` | No (el motor de tareas ya está en `main`) |
 | Base de datos | `src/server/db/schema.sql` (+7 tablas `ai_*`, todo `CREATE TABLE IF NOT EXISTS`, sin ALTER ni DROP) | No |
 | Panel del operador | `src/app/admin/ia/page.tsx`, `admin/layout.tsx`, `admin_actions.ts` | No |
-| Scripts | `scripts/ia/{preparado,catalogo_openrouter,prueba_humo}.ts`, `deploy/convivencia/{configurar_openrouter,instalar_router}.sh` | No |
+| Scripts | `scripts/ia/{preparado,catalogo_openrouter,prueba_humo,humo_lib}.ts`, `deploy/convivencia/{configurar_openrouter,instalar_router}.sh` | No |
 | **Solo en `router-ia-solo` (necesitan PR #3)** | nivel por tarea en `features/tasks/catalog.ts`, cuota mostrada en `usage/report.ts` y `consumo/page.tsx`, `scripts/ia/{evaluar,empleados_routing}.ts`, `scripts/finanzas/simular.ts` | **Sí** |
 
 ## Resultado

@@ -23,11 +23,7 @@ El script `deploy/convivencia/configurar_openrouter.sh` (probado con 7 pruebas a
    Pega la clave cuando lo pida. Responde `SI` para reiniciar solo `crea-oficina` (el script comprueba que responde y, si no, **revierte solo**).
 4. **Comprobar que el router sigue apagado y qué falta** (solo lectura): el script ejecuta `npm run ia:preparado`. Debe decir «AI_ROUTER está APAGADO» y listar lo que falta (modelos verificados). **Es lo esperado.**
 5. **Registrar modelos** en `https://app.mmeia.tech/admin/ia` cuando existan modelos verificados (ver `SELECCION_MODELOS.md`); ajusta las reglas: tope por llamada **0.05**, gratuito→pago **desactivado**.
-6. **Prueba de humo** (UNA llamada, con tope; la clave se lee del archivo en un subproceso y no se imprime):
-   ```
-   sudo runuser -u ctoapp -- env HOME=/opt/crea-oficina/home PATH=/opt/crea-oficina/node/bin:/usr/bin:/bin bash -c 'cd /opt/crea-oficina/app && set -a && . /etc/crea-oficina/env && set +a && npm run -s ia:humo -- --modelo ID_DEL_MODELO --precio-in X --precio-out Y --max-usd 0.01 --confirmo'
-   ```
-   Sin `--confirmo` solo muestra lo que haría. Cuesta, como máximo, el tope indicado.
+6. **Prueba de humo** (UNA llamada a Sonnet 5.5, con restricciones fijadas en la solicitud): ver `INSTALAR_ROUTER_VPS.md`, sección 5, y `PRUEBA_HUMO_SONNET.md`. Sin `--autorizo-una-llamada-facturable` solo hace un simulacro local.
 7. **Evaluación con las 8 tareas** (después del paso 6): `ia:evaluar` con `--dry-run` primero y luego `--max-usd 1` (ver `PRUEBA_REAL_OPENROUTER.md`).
 
 ## Reversión

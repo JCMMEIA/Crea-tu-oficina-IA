@@ -46,20 +46,15 @@ systemctl is-active <unidad-de-openclaw>; curl -s -o /dev/null -w "%{http_code}\
 ```
 Si cambió el PID o la hora de inicio, OpenClaw se reinició (no debería: solo se reinicia `crea-oficina`).
 
-## 5. Prueba de humo: UNA llamada, tope US$0.01 (sin encender el router)
-Es independiente del router: usa solo el adaptador de OpenRouter y la clave del servidor. Primero revisa la clave (no cuesta; no muestra la clave):
+## 5. Prueba de humo: UNA llamada a Claude Sonnet 5.5 (sin encender el router)
+Independiente del router, de `AI_ROUTER` y del catálogo de `/admin/ia`. Usa solo la clave del servidor (nunca se imprime). Detalle: `PRUEBA_HUMO_SONNET.md`. Los tres comandos comparten este prefijo (`PREFIJO`):
 ```
-sudo runuser -u ctoapp -- bash -c 'set -a; . /etc/crea-oficina/env; set +a; curl -s -H "Authorization: Bearer $OPENROUTER_API_KEY" https://openrouter.ai/api/v1/key | python3 -c "import sys,json; d=json.load(sys.stdin)[\"data\"]; print({k:d.get(k) for k in (\"label\",\"limit\",\"limit_remaining\",\"usage\",\"is_free_tier\")})"'
+PREFIJO="sudo runuser -u ctoapp -- env HOME=/opt/crea-oficina/home PATH=/opt/crea-oficina/node/bin:/usr/bin:/bin bash -c 'cd /opt/crea-oficina/app && set -a && . /etc/crea-oficina/env && set +a && npm run -s ia:humo --"
 ```
-Simulacro (no llama): 
-```
-sudo runuser -u ctoapp -- bash -c 'cd /opt/crea-oficina/app && set -a && . /etc/crea-oficina/env && set +a && npm run -s ia:humo -- --modelo anthropic/claude-haiku-5.5 --precio-in 0.10 --precio-out 0.50'
-```
-Con tu autorización, la llamada real (peor caso ≈ US$0.00002; el programa se niega si supera US$0.01):
-```
-… npm run -s ia:humo -- --modelo anthropic/claude-haiku-5.5 --precio-in 0.10 --precio-out 0.50 --max-usd 0.01 --confirmo
-```
-Debe imprimir `✅ Respondió…` con tokens y costo. No requiere `AI_ROUTER=on`: los clientes siguen con el comportamiento anterior.
+1. **Simulacro local** (cero llamadas, cero costo; muestra privacidad, proveedores y costo máximo estimado): `$PREFIJO'`
+2. **Consulta de la clave, solo lectura** (no factura; muestra si tiene límite propio o guardrail; no crea ni asigna nada): `$PREFIJO --consultar-clave'`
+3. **Con tu autorización expresa**, la llamada real: `$PREFIJO --autorizo-una-llamada-facturable'`
+Envía exactamente una solicitud (sin reintentos) con `provider.only = [amazon-bedrock/us-east-1, amazon-bedrock/eu-west-1]`, `zdr=true`, `data_collection="deny"`, `allow_fallbacks=false` y `max_price` = tarifas verificadas × 1.25. Si el cuerpo no cumple exactamente eso, o el peor caso estimado no cabe en US$0.01, no envía nada. No requiere `AI_ROUTER=on`.
 
 ## 6. Después
 Encender el router para clientes NO forma parte de este paquete: requiere modelos verificados en `/admin/ia`, presupuestos y tu autorización (ver `ROUTER.md`, `CREDENCIALES_Y_PRESUPUESTO.md`).
