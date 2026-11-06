@@ -20,8 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      # Se prueba la rama combinada TAL CUAL (si no, los archivos de CI de esta rama chocarían con la lista permitida del instalador).
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with: { ref: claude/personaliza-sobre-router, fetch-depth: 0 }
+      - name: Traer solo la prueba nueva del instalador (sin commitear)
+        run: git show origin/claude/ci-linux:tests/instalar_personaliza_real.test.ts > tests/instalar_personaliza_real.test.ts
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
