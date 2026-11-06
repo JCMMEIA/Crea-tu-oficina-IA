@@ -1,0 +1,3 @@
+# Los scripts de shell y los documentos con comandos deben quedar en LF también en Windows (bash y las pruebas no toleran CRLF).
+*.sh text eol=lf
+*.md text eol=lf
