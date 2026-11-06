@@ -1,0 +1,80 @@
+name: ci-linux
+
+# Pruebas en Linux (Ubuntu desechable de GitHub). No usa secretos, no llama a ninguna IA de pago, no toca ningún servidor.
+on:
+  push:
+    branches: [claude/ci-linux]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  # Ninguna clave real: las pruebas usan valores ficticios y servidores locales.
+  OPENROUTER_API_KEY: ""
+
+jobs:
+  combinada:
+    name: Rama combinada (PR #7 + PR #8) en Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - name: Revisión de tipos y de secretos
+        run: npm run typecheck && npm run secrets:check
+      - name: Suite completa (sin root)
+        run: npx vitest run --maxWorkers=2
+      - name: Instalador de Personaliza sobre la historia real (como root, servicios simulados)
+        run: sudo env "PATH=$PATH" npx vitest run tests/instalar_personaliza_real.test.ts
+
+  router-pr7:
+    name: PR #7 (router) en Linux, incluidas prueba_humo e instalar_real_historia
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: claude/humo-sonnet-seguro, fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - name: prueba_humo (servidor local, clave ficticia: cero llamadas reales)
+        run: npx vitest run tests/prueba_humo.test.ts
+      - name: Instalador v2 sobre la historia real (como root, servicios simulados)
+        run: sudo env "PATH=$PATH" npx vitest run tests/instalar_real_historia.test.ts tests/instalar_router_recuperacion.test.ts
+
+  postgres-real:
+    name: Migración contra PostgreSQL real
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: solo-para-ci
+          POSTGRES_DB: prueba
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: solo-para-ci
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGDATABASE: prueba
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar schema.sql dos veces (debe ser idempotente)
+        run: |
+          psql -v ON_ERROR_STOP=1 -q -f src/server/db/schema.sql
+          psql -v ON_ERROR_STOP=1 -q -f src/server/db/schema.sql
+      - name: La columna office_design existe, es jsonb y las filas nuevas valen '{}'
+        run: |
+          test "$(psql -Atc "SELECT data_type FROM information_schema.columns WHERE table_name='agencies' AND column_name='office_design'")" = "jsonb"
+          psql -v ON_ERROR_STOP=1 -Atc "SELECT column_default FROM information_schema.columns WHERE table_name='agencies' AND column_name='office_design'"
+      - name: Guardar y leer un diseño sin tocar la marca
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc "SELECT column_name FROM information_schema.columns WHERE table_name='agencies' AND column_name='brand'" | grep -qx brand
