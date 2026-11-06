@@ -13,6 +13,6 @@ export default async function Agencia3D({ searchParams }: { searchParams: Promis
   scene ??= await agencyScene(db, agency);
   return (<><h1>Ver mi oficina</h1>
     <p className="lead">{current ? "La oficina de un cliente, con tu marca." : "Tu negocio: cada zona es un cliente con sus empleados."}</p>
-    <p className="row"><Link className={`chip ${current ? "" : "ok"}`} href="/agencia/oficina-3d">🏛️ Todo mi negocio</Link>{clients.map((c: any) => <Link key={c.id} className={`chip ${current === c.id ? "ok" : ""}`} href={`/agencia/oficina-3d?cliente=${c.id}`}>🏢 {c.is_demo ? "Oficina de práctica" : c.name}</Link>)}</p>
+    <p className="row"><Link className="chip" href="/agencia/personalizar" data-testid="link-personalizar">🎨 Personaliza tu oficina</Link><Link className={`chip ${current ? "" : "ok"}`} href="/agencia/oficina-3d">🏛️ Todo mi negocio</Link>{clients.map((c: any) => <Link key={c.id} className={`chip ${current === c.id ? "ok" : ""}`} href={`/agencia/oficina-3d?cliente=${c.id}`}>🏢 {c.is_demo ? "Oficina de práctica" : c.name}</Link>)}</p>
     <OfficeViewer scene={scene} testId="office-agency" emptyCta={{ href: current ? "/agencia/contratar" : "/agencia/clientes", label: current ? "Agregar empleado" : "Agregar cliente" }} /></>);
 }

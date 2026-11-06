@@ -286,3 +286,7 @@ CREATE INDEX IF NOT EXISTS emails_provider_idx ON emails(provider_id);
 CREATE INDEX IF NOT EXISTS emails_status_idx ON emails(status, created_at);
 -- Identidad de empleados: foto personalizada del cliente (imagen pequeña validada, data URL). El nombre propio usa employees.name.
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo text;
+
+-- === Personaliza tu oficina (idempotente; el código anterior ignora esta columna y sigue funcionando) ===
+-- Estilo visual + tipo de espacio + interruptores, POR oficina (agencia). Vacío '{}' = aspecto de siempre.
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS office_design jsonb NOT NULL DEFAULT '{}'::jsonb;

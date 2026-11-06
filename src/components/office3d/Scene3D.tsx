@@ -3,8 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Edges, Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import type { Desk, OfficeScene, Zone } from "@/server/office3d/types";
+import type { Desk, OfficeScene, ThemeLook, Zone } from "@/server/office3d/types";
 import type { Sel } from "./iso";
+import { Backdrop3D, Decor3D } from "./Look3D";
 
 const statusRing: Record<Desk["status"], string> = { active: "#16a34a", paused: "#d97706", inactive: "#9ca3af" };
 
@@ -16,7 +17,7 @@ function Avatar({ color, status }: { color: string; status: Desk["status"] }) {
     <mesh position={[0, 1.02, 0]}><sphereGeometry args={[0.17, 14, 12]} /><meshStandardMaterial color="#fcd9b6" roughness={0.8} /></mesh>
   </group>);
 }
-function DeskMesh({ d, color, selected, hovered, onSelect, onHover, labels }: { labels: React.RefObject<HTMLDivElement | null>; d: Desk; color: string; selected: boolean; hovered: boolean; onSelect: () => void; onHover: (h: boolean) => void }) {
+function DeskMesh({ look, d, color, selected, hovered, onSelect, onHover, labels }: { look?: ThemeLook; labels: React.RefObject<HTMLDivElement | null>; d: Desk; color: string; selected: boolean; hovered: boolean; onSelect: () => void; onHover: (h: boolean) => void }) {
   const s = selected || hovered ? 1.07 : 1;
   return (
     <group position={[d.x, 0, d.z]} scale={s}
@@ -25,14 +26,14 @@ function DeskMesh({ d, color, selected, hovered, onSelect, onHover, labels }: { 
       onPointerOut={() => { onHover(false); document.body.style.cursor = ""; }}>
       <mesh position={[0, 0.7, -0.1]}><boxGeometry args={[1.2, 0.07, 0.7]} /><meshStandardMaterial color="#e5e1d8" roughness={0.7} /></mesh>
       <mesh position={[0, 0.35, -0.1]}><boxGeometry args={[1.1, 0.68, 0.6]} /><meshStandardMaterial color="#cfcac0" roughness={0.8} /></mesh>
-      <mesh position={[0, 1.0, -0.3]}><boxGeometry args={[0.55, 0.36, 0.04]} /><meshStandardMaterial color="#1f2937" emissive={selected ? color : "#0b1220"} emissiveIntensity={selected ? 0.6 : 0.25} /></mesh>
+      <mesh position={[0, 1.0, -0.3]}><boxGeometry args={[0.55, 0.36, 0.04]} /><meshStandardMaterial color={look?.screen ?? "#1f2937"} emissive={selected ? color : look?.fx.lights ? look.screen : "#0b1220"} emissiveIntensity={selected ? 0.6 : 0.25} /></mesh>
       <mesh position={[0, 0.8, -0.3]}><boxGeometry args={[0.08, 0.1, 0.06]} /><meshStandardMaterial color="#475569" /></mesh>
       <Avatar color={color} status={d.status} />
       {(selected || hovered) && <Html portal={labels as React.RefObject<HTMLElement>} position={[0, 1.55, 0.62]} center style={{ pointerEvents: "none" }}><div className="o3d-tag">{d.label}</div></Html>}
     </group>
   );
 }
-function ZoneMesh({ z, selected, hoveredDesk, selDesk, onSelectZone, onSelectDesk, onHoverDesk, labels }: { labels: React.RefObject<HTMLDivElement | null>; z: Zone; selected: boolean; hoveredDesk: string | null; selDesk: string | null; onSelectZone: () => void; onSelectDesk: (id: string) => void; onHoverDesk: (id: string | null) => void }) {
+function ZoneMesh({ look, z, selected, hoveredDesk, selDesk, onSelectZone, onSelectDesk, onHoverDesk, labels }: { look?: ThemeLook; labels: React.RefObject<HTMLDivElement | null>; z: Zone; selected: boolean; hoveredDesk: string | null; selDesk: string | null; onSelectZone: () => void; onSelectDesk: (id: string) => void; onHoverDesk: (id: string | null) => void }) {
   return (
     <group>
       <mesh position={[z.x, 0.06, z.z]} onClick={(e) => { e.stopPropagation(); onSelectZone(); }}
@@ -43,7 +44,7 @@ function ZoneMesh({ z, selected, hoveredDesk, selDesk, onSelectZone, onSelectDes
       <Html portal={labels as React.RefObject<HTMLElement>} position={[z.x - z.w / 2 + 0.1, 0.25, z.z - z.d / 2]} style={{ pointerEvents: "none", transform: "translate(0,-100%)" }}>
         <div className="o3d-label" style={{ borderColor: z.color }}>{z.icon} {z.label} · {z.desks.length}{z.status === "needs_setup" ? " 🔧" : z.status === "empty" ? " 🪑" : " ✓"}</div>
       </Html>
-      {z.desks.map((d) => <DeskMesh key={d.id} d={d} color={z.color} selected={selDesk === d.id} hovered={hoveredDesk === d.id} onSelect={() => onSelectDesk(d.id)} onHover={(h) => onHoverDesk(h ? d.id : null)} labels={labels} />)}
+      {z.desks.map((d) => <DeskMesh key={d.id} look={look} d={d} color={z.color} selected={selDesk === d.id} hovered={hoveredDesk === d.id} onSelect={() => onSelectDesk(d.id)} onHover={(h) => onHoverDesk(h ? d.id : null)} labels={labels} />)}
     </group>
   );
 }
@@ -90,21 +91,21 @@ function FitCamera({ base, halfExtent }: { base: [number, number, number]; halfE
 export default function Scene3D({ scene, selected, onSelect, onReady, resetKey, labels }: { labels: React.RefObject<HTMLDivElement | null>; scene: OfficeScene; selected: Sel; onSelect: (s: Sel) => void; onReady: () => void; resetKey: number }) {
   const [hover, setHover] = useState<string | null>(null);
   const r = Math.max(scene.bounds.w, scene.bounds.d, 9);
-  const half = Math.max(scene.bounds.w, scene.bounds.d) / 2 + 2.5;
+  const look = scene.theme.look; const half = Math.max(scene.bounds.w, scene.bounds.d) / 2 + (look?.margin ?? 2.5);
   const plants = useMemo(() => [[-half + 0.6, -half + 0.6], [half - 0.6, -half + 0.6], [-half + 0.6, half - 0.6], [half - 0.6, half - 0.6]] as [number, number][], [half]);
   const fired = useRef(false);
   return (
-    <Canvas key={resetKey} frameloop="demand" dpr={[1, 1.75]} shadows={false} gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+    <Canvas key={resetKey} frameloop={look?.fx.motion ? "always" : "demand"} dpr={[1, 1.75]} shadows={false} gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
       camera={{ position: [r * 0.74, r * 0.62, r * 0.74], fov: 38, near: 0.1, far: 300 }}
       style={{ touchAction: "none" }} onPointerMissed={() => onSelect(null)}
       onCreated={() => { if (!fired.current) { fired.current = true; onReady(); } }}>
-      <ambientLight intensity={0.85} /><directionalLight position={[8, 14, 6]} intensity={1.1} /><hemisphereLight args={["#ffffff", "#bbb7ae", 0.35]} />
+      <ambientLight intensity={look?.ambient ?? 0.85} color={look?.lightColor ?? "#ffffff"} /><directionalLight position={[8, 14, 6]} intensity={look?.sun ?? 1.1} color={look?.lightColor ?? "#ffffff"} /><hemisphereLight args={["#ffffff", "#bbb7ae", 0.35]} />
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[half * 2 + 2, half * 2 + 2]} /><meshStandardMaterial color={scene.theme.floor} roughness={1} /></mesh>
       <mesh position={[0, 0.0, -half - 1]}><boxGeometry args={[half * 2 + 2, 0.05, 0.1]} /><meshStandardMaterial color={scene.theme.wall} /></mesh>
       <Reception scene={scene} labels={labels} />
-      {plants.map(([x, z], i) => <Plant key={i} x={x} z={z} />)}
+      {look ? <><Backdrop3D look={look} scene={scene} /><Decor3D look={look} scene={scene} /></> : plants.map(([x, z], i) => <Plant key={i} x={x} z={z} />)}
       {scene.zones.map((z) => (
-        <ZoneMesh key={z.id} z={z} selected={selected?.type === "zone" && selected.id === z.id} hoveredDesk={hover} selDesk={selected?.type === "desk" ? selected.id : null}
+        <ZoneMesh key={z.id} look={look} z={z} selected={selected?.type === "zone" && selected.id === z.id} hoveredDesk={hover} selDesk={selected?.type === "desk" ? selected.id : null}
           onSelectZone={() => onSelect({ type: "zone", id: z.id })} onSelectDesk={(id) => onSelect({ type: "desk", id })} onHoverDesk={setHover} labels={labels} />
       ))}
       <OrbitControls makeDefault enableDamping={false} maxPolarAngle={Math.PI / 2.15} minPolarAngle={0.2} minDistance={4} maxDistance={r * 4} target={[0, 0.5, 0]} />

@@ -5,6 +5,7 @@ import { requireAgency } from "@/lib/session";
 import { chooseServices, finish, hireInDemo, runPractice, saveBusinessType, saveIdentity, saveName, setStep, ensureDemoOffice } from "@/server/onboarding";
 import { getProvider } from "@/server/models";
 import { getAdapter } from "@/server/connectors";
+import { saveOfficeDesign } from "@/server/office3d/design_store";
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "");
 const go = (n: number, extra = "") => redirect(`/empezar?paso=${n}${extra}`);
@@ -38,6 +39,7 @@ export async function identityStep(f: FormData) {
     if (s(f, "sinLogo") === "on") logo = null;
     const color = /^#[0-9a-fA-F]{6}$/.test(s(f, "colorCustom")) && s(f, "color") === "custom" ? s(f, "colorCustom") : s(f, "color");
     await saveIdentity(db, agency, { name: s(f, "name"), color, style: s(f, "estilo") || "moderno", logo });
+    if (s(f, "diseno")) { let raw: unknown = null; try { raw = JSON.parse(s(f, "diseno")); } catch { /* se ignora: la marca ya quedó guardada */ } if (raw) await saveOfficeDesign(db, agency, raw); }
   });
   revalidatePath("/", "layout"); go(5);
 }

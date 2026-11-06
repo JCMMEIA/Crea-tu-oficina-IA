@@ -13,6 +13,7 @@ import { addClientUser, applyIndustryTemplate, createClient, createProposal, cre
 import { deployServiceToClient } from "@/server/agency/deploy";
 import { skillSpecSchema } from "@/server/skills";
 import { buildTaughtSkill } from "@/lib/teach";
+import { saveOfficeDesign } from "@/server/office3d/design_store";
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "");
 const back = (path: string, msg: string, kind: "ok" | "bad" = "bad") => redirect(`${path}${path.includes("?") ? "&" : "?"}${kind === "ok" ? "ok" : "error"}=${encodeURIComponent(msg)}`);
@@ -68,6 +69,14 @@ export async function brandAction(f: FormData) {
     const swatch = s(f, "swatch"); const custom = s(f, "primaryColor"); const colorChosen = /^#[0-9a-fA-F]{6}$/.test(swatch) && custom.toLowerCase() === (s(f, "currentColor") || custom).toLowerCase() ? swatch : custom;
     await updateBrand(db, agency, { name: s(f, "name"), specialty: s(f, "specialty"), tagline: s(f, "tagline"), primaryColor: colorChosen, logo, style: s(f, "style") || "moderno" });
     return "Tu marca quedó guardada.";
+  });
+}
+export async function designAction(f: FormData) {
+  const { db, agency } = await requireAgency();
+  await safe("/agencia/personalizar", async () => {
+    let raw: unknown = {}; try { raw = JSON.parse(s(f, "diseno")); } catch { throw new Error("No pudimos leer tu elección. Inténtalo otra vez."); }
+    await saveOfficeDesign(db, agency, raw);
+    return "Tu diseño quedó guardado. Así se verá tu oficina.";
   });
 }
 export async function clientCreateAction(f: FormData) {

@@ -24,7 +24,19 @@ export interface Reception { x: number; z: number; w: number; d: number }
 export interface SceneBrand { name: string; color: string; logo: string | null; tagline: string }
 
 /** Registro de temas: en la fase 2 se añaden estilos por agencia / oficinas premium sin tocar los renderizadores. */
-export interface OfficeTheme { key: string; floor: string; wall: string; accent?: string; premium?: boolean }
+/** Elementos decorativos reutilizables (los dibujan igual la vista 2D y la 3D). */
+export type DecorKind = "plant" | "blocks" | "neon" | "holo" | "star" | "tower" | "crystal" | "cactus" | "flask" | "coral" | "bubble" | "palm" | "dish" | "column" | "fountain" | "sofa" | "lamp";
+export type BackdropKind = "garden" | "skyline" | "night" | "hall" | "sea";
+export type PatternKind = "none" | "studs" | "tiles" | "planks" | "marble" | "grid" | "sand" | "waves";
+/** «Personaliza tu oficina»: aspecto ya resuelto (estilo + espacio + interruptores). Solo presentación: nunca cambia empleados ni departamentos. */
+export interface ThemeLook {
+  style: string; space: string; label: string;
+  bgFrom: string; bgTo: string; accent: string; accent2: string; desk: string; deskTop: string; screen: string;
+  lightColor: string; ambient: number; sun: number; margin: number; pattern: PatternKind;
+  backdrop: BackdropKind | null; skyFrom: string; skyTo: string; decor: DecorKind[];
+  fx: { motion: boolean; lights: boolean; premium: boolean; immersive: boolean };
+}
+export interface OfficeTheme { key: string; floor: string; wall: string; accent?: string; premium?: boolean; look?: ThemeLook }
 export interface OfficeScene {
   version: 1; kind: "company" | "agency"; title: string; subtitle: string;
   brand: SceneBrand; theme: OfficeTheme; reception: Reception;
