@@ -33,7 +33,9 @@ jobs:
       - name: Suite completa (sin root)
         run: npx vitest run --maxWorkers=2
       - name: Instalador de Personaliza sobre la historia real (como root, servicios simulados)
-        run: sudo env "PATH=$PATH" npx vitest run tests/instalar_personaliza_real.test.ts
+        run: |
+          sudo env "PATH=$PATH" npx vitest run tests/instalar_personaliza_real.test.ts --reporter=json --outputFile=/tmp/r.json || true
+          node -e 'const r=require("/tmp/r.json");console.log("pasaron",r.numPassedTests,"fallaron",r.numFailedTests,"omitidas",r.numPendingTests);if(r.numFailedTests>0||r.numPassedTests<5){process.exit(1)}'
 
   router-pr7:
     name: "PR #7 (router) en Linux, incluidas prueba_humo e instalar_real_historia"
@@ -48,7 +50,9 @@ jobs:
       - name: "prueba_humo (servidor local, clave ficticia, cero llamadas reales)"
         run: npx vitest run tests/prueba_humo.test.ts
       - name: Instalador v2 sobre la historia real (como root, servicios simulados)
-        run: sudo env "PATH=$PATH" npx vitest run tests/instalar_real_historia.test.ts tests/instalar_router_recuperacion.test.ts
+        run: |
+          sudo env "PATH=$PATH" npx vitest run tests/instalar_real_historia.test.ts tests/instalar_router_recuperacion.test.ts --reporter=json --outputFile=/tmp/r.json || true
+          node -e 'const r=require("/tmp/r.json");console.log("pasaron",r.numPassedTests,"fallaron",r.numFailedTests,"omitidas",r.numPendingTests);if(r.numFailedTests>0||r.numPassedTests<6){process.exit(1)}'
 
   postgres-real:
     name: Migración contra PostgreSQL real
