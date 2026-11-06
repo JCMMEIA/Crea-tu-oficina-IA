@@ -324,3 +324,7 @@ CREATE INDEX IF NOT EXISTS ai_calls_task_idx ON ai_calls(task_id);
 CREATE TABLE IF NOT EXISTS ai_alerts (account_id text NOT NULL, period date NOT NULL, threshold int NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period, threshold));
 -- Router: proveedores aprobados por modelo (se aplican con provider.only en OpenRouter). Aditivo e idempotente.
 ALTER TABLE ai_models ADD COLUMN IF NOT EXISTS allowed_providers text[] NOT NULL DEFAULT '{}';
+
+-- === Personaliza tu oficina (idempotente; el código anterior ignora esta columna y sigue funcionando) ===
+-- Estilo visual + tipo de espacio + interruptores, POR oficina (agencia). Vacío '{}' = aspecto de siempre.
+ALTER TABLE agencies ADD COLUMN IF NOT EXISTS office_design jsonb NOT NULL DEFAULT '{}'::jsonb;

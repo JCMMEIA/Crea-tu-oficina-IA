@@ -11,6 +11,8 @@ import { actAs } from "@/server/auth";
 import { practiceExample } from "@/server/guide/practice";
 import { getProvider } from "@/server/models";
 import { getToolkit } from "@/server/connectors/catalog";
+import { PersonalizeOffice } from "@/components/office3d/PersonalizeOffice";
+import { getOfficeDesign } from "@/server/office3d/design_store";
 import { OfficeViewer } from "@/components/office3d/OfficeViewer";
 import { nameStep, servicesStep, employeesStep, identityStep, officeStep, practiceStep, finishStep } from "./actions";
 import { StatusChip } from "@/lib/ui";
@@ -56,7 +58,8 @@ export default async function Empezar({ searchParams }: { searchParams: Promise<
       <h3 style={{ marginTop: 18 }}>Color principal</h3><div className="pick" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))" }}>
         {COLORS.map(([c, n]) => <label className="card" key={c}><input type="radio" name="color" value={c} defaultChecked={(ag.brand?.primaryColor ?? "#4f46e5") === c} /><span style={{ background: c, width: 34, height: 34, borderRadius: "50%", display: "block" }} aria-hidden="true" /><b>{n}</b></label>)}
         <label className="card"><input type="radio" name="color" value="custom" /><input type="color" name="colorCustom" defaultValue="#4f46e5" aria-label="Elegir otro color" style={{ width: 44, height: 34, padding: 0 }} /><b>Otro</b></label></div>
-      <h3 style={{ marginTop: 18 }}>Estilo de tu oficina</h3><div className="pick">{STYLES.map(([k, n, d, c]) => <label className="card" key={k}><input type="radio" name="estilo" value={k} defaultChecked={(ag.brand?.style ?? "moderno") === k} data-testid={`estilo-${k}`} /><span style={{ background: c, height: 38, borderRadius: 8, border: "1px solid var(--line)", display: "block" }} aria-hidden="true" /><b>{n}</b><span className="muted">{d}</span></label>)}</div>
+      <h3 style={{ marginTop: 18 }}>Tono de colores</h3><div className="pick">{STYLES.map(([k, n, d, c]) => <label className="card" key={k}><input type="radio" name="estilo" value={k} defaultChecked={(ag.brand?.style ?? "moderno") === k} data-testid={`estilo-${k}`} /><span style={{ background: c, height: 38, borderRadius: 8, border: "1px solid var(--line)", display: "block" }} aria-hidden="true" /><b>{n}</b><span className="muted">{d}</span></label>)}</div>
+      <div style={{ marginTop: 18 }}><PersonalizeOffice mode="embedded" scene={await companyScene(db, await actAs(db, agency, demoId))} initial={await getOfficeDesign(db, agency)} legacyStyle={ag.brand?.style ?? "moderno"} /></div>
       <label htmlFor="logo">Tu logo (opcional)</label><Help>Una imagen PNG, JPG o WEBP de hasta 150 KB. Si no tienes, déjalo vacío.</Help><input id="logo" type="file" name="logoFile" accept="image/png,image/jpeg,image/webp" />
       <p className="row"><Link className="btn ghost" href="/empezar?paso=3">← Atrás</Link><button className="big" data-testid="next">Guardar y ver mi oficina →</button></p></form>}
 
