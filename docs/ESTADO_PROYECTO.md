@@ -36,8 +36,13 @@ Pensado para pegar al inicio de una conversación con Claude chat. Una sola fuen
 - **Veredicto: NO ESTÁ LISTO PARA DESPLEGAR.** Falta ver el instalador nuevo ejecutarse en Linux, probar la migración con PostgreSQL real (solo PGlite hasta ahora), confirmar con `--verificar` la versión realmente instalada y la autorización expresa del dueño.
 - Procedimiento: `docs/personaliza/INSTALAR_Y_REVERTIR.md` (`--verificar` → simulacro → `--aplicar` → revisión a mano; `--revertir` restaura `.next` y el código sin recompilar y no toca la base de datos). Antes de la ventana real: instantánea del VPS desde el panel de Hostinger, si el plan la incluye.
 
-## 5. Pruebas en Linux (en preparación)
-- Rama `claude/ci-linux`: flujo de GitHub Actions en `ubuntu-latest`, sin secretos ni llamadas de IA de pago, con tres trabajos: rama combinada (suite completa + instalador de Personaliza sobre la historia real, aplicar y revertir, como root con servicios simulados), PR #7 (`prueba_humo` e `instalar_real_historia`) y migración contra PostgreSQL real. Requisito para pasar a «listo»: que todo pase ahí.
+## 5. Pruebas en Linux (GitHub Actions) — resultado 2026-11-06
+- Rama `claude/ci-linux` (commit `4add681`), sin secretos ni llamadas de IA de pago. **Tres trabajos, todos en verde:** https://github.com/JCMMEIA/Crea-tu-oficina-IA/actions/runs/42308352744
+  1. Rama combinada (PR #7 + PR #8): tipos, secretos y suite completa en Linux, más `instalar_personaliza.sh` aplicado y revertido sobre la historia real (8f84f20 → punta de la rama combinada), como root y con servicios simulados. El flujo exige que esas pruebas se ejecuten de verdad (no omitidas).
+  2. PR #7: `prueba_humo` (servidor local, clave ficticia) e `instalar_real_historia` pasan en Linux. Los bloqueos de Windows quedan resueltos.
+  3. PostgreSQL 16 real: `schema.sql` se aplica dos veces sin error y `agencies.office_design` existe como jsonb. Cubre solo el esquema, no la aplicación completa contra Postgres.
+- Sigue sin cubrirse: un VPS real (systemd, Hostinger, OpenClaw), la compilación real (`next build`) dentro del instalador (se simuló) y la versión instalada en producción (solo `--verificar` en el VPS).
+- Veredicto de Personaliza: sigue **NO LISTO** hasta confirmar con `--verificar` en el VPS y tener autorización del dueño; el riesgo de que el instalador falle en Linux baja de forma importante.
 
 ## 6. Reglas que no se rompen
 - Sin fusionar ni desplegar sin autorización expresa; sin reiniciar servicios, activar `AI_ROUTER`, llamadas de IA de pago, ni tocar Stripe, Resend, claves, `.data` de producción u OpenClaw. Nunca imprimir ni pedir secretos.
