@@ -22,4 +22,31 @@ Cada oficina (agencia) elige **estilo** (cómo se ve) y **espacio** (dónde est�
 - El diseño es por oficina (agencia); los clientes de esa agencia lo ven igual.
 
 ## Despliegue (lo hace el dueño)
-Con el instalador v2 `deploy/convivencia/instalar_router.sh`. No usar `actualizar_convivencia.sh`. La migración se aplica sola al arrancar y es idempotente.
+Con `deploy/convivencia/instalar_personaliza.sh` desde la rama `claude/personaliza-sobre-router` (el instalador v2 del router rechazaría este PR porque nace de `main`). Procedimiento y reversión: `docs/personaliza/INSTALAR_Y_REVERTIR.md`. No usar `actualizar_convivencia.sh`. La migración se aplica sola al arrancar y es idempotente.
+
+## Reporte final de preparación para producción
+**Veredicto: NO ESTÁ LISTO para desplegar todavía** (ver «Pendiente»). Nada se ha fusionado, desplegado ni tocado en el VPS.
+
+### Auditoría de cambios
+- 37 archivos frente a `main`: 22 de `src/` (pantalla, modelo, escena 2D/3D, esquema), 1 instalador, 2 de pruebas y 12 de documentos/capturas.
+- `agencies.brand` no se modifica; el único cambio de datos es la columna aditiva `office_design` (`ADD COLUMN IF NOT EXISTS`).
+- Búsqueda de secretos (claves `sk-`, `re_`, `BEGIN PRIVATE`) en `src`, `deploy` y `tests`: sin coincidencias.
+
+### Pruebas (copia de verificación en D:, rama combinada PR #7 + PR #8)
+- Pasan completos: agency, catalogo, channels, commerce, commercial, configurar_correo, configurar_openrouter, core, design, email, employees, ia_costos, ia_panel_modelos, ia_privacidad, instalar_doc, instalar_personaliza (6/6), instalar_router, instalar_router_recuperacion, leads, messaging (solo, por memoria), office3d, openrouter_contrato, personaliza (21/21), pilot, redesign, router, stripe.
+- **No concluida:** `prueba_humo.test.ts` (PR #7, local con clave falsa) se quedó colgada en este equipo por lanzar procesos hijos; el PR #8 no toca ese código.
+- Hubo 3 fallos intermedios por finales de línea de Windows (CRLF) al extraer en el equipo del dueño; git guarda LF y el VPS los recibe bien. Las pruebas de `bash -n` necesitan Git Bash en el PATH (el `bash` de WSL no tiene distribución instalada).
+- Hidratación de React: 0 errores en 21 cargas (7 diseños, desarrollo y producción, PC y celular).
+
+### Rendimiento (servidor local de producción)
+- JavaScript: `/agencia` 471 KB, `/agencia/identidad` 471 KB, `/agencia/personalizar` 505 KB, `/agencia/oficina-3d` ~1,4 MB (incluye el motor 3D, solo en esa página). Sin imágenes pesadas. DOMContentLoaded 100–200 ms en local.
+- Animación 3D a ~25 cuadros/s, solo si hay movimiento y la pestaña está visible.
+
+### Riesgos
+1. La versión realmente instalada en Hostinger solo la confirma `--verificar` en el VPS (solo lectura).
+2. `instalar_personaliza.sh` no se ha ejecutado en Linux: solo pruebas estáticas y derivación del v2.
+3. Migración probada con PGlite, no con PostgreSQL real (sentencia estándar y aditiva).
+4. El disco C del equipo del dueño está lleno.
+
+### Pendiente antes de poder decir «LISTO»
+Publicar las ramas en GitHub, ejecutar `--verificar` en el VPS y la autorización expresa del dueño.

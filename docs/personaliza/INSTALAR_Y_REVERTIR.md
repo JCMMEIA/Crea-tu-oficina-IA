@@ -3,17 +3,17 @@
 > **Nada de esto se ha ejecutado en el VPS.** Hazlo solo cuando lo autorices. No reinicia OpenClaw, no enciende `AI_ROUTER`, no escribe el archivo `env`, no toca Stripe, Resend ni `.data`.
 
 ## Qué se instala y por qué NO es la rama del PR #8
-El VPS tiene instalado el router (commit `a6cc7d4`, PR #7). El PR #8 nace de `main`, que **no contiene** ese commit, así que el instalador v2 (`instalar_router.sh`) lo rechazaría («no avanza limpio / archivos fuera de la lista»). Por eso se prepara una rama de instalación:
+El VPS tiene instalado el router (PR #7): según la guía del router y lo confirmado en producción es el commit `8f84f20`; guías antiguas decían `a6cc7d4`, que es un antepasado suyo. Lo que de verdad hay en el servidor solo lo confirma `--verificar`. El PR #8 nace de `main`, que **no contiene** ese commit, así que el instalador v2 (`instalar_router.sh`) lo rechazaría («no avanza limpio / archivos fuera de la lista»). Por eso se prepara una rama de instalación:
 
 | Rama | Contenido | Para qué |
 |---|---|---|
 | `claude/personaliza-tu-oficina` (PR #8, contra `main`) | Solo la función | Revisión y fusión a `main` |
 | `claude/personaliza-sobre-router` | PR #7 (router, apagado) + PR #8 | **Instalar en el VPS** con `instalar_personaliza.sh` |
 
-La rama de instalación desciende de `a6cc7d4` (fast-forward). El único conflicto con el router fue `schema.sql` (ambos añaden sentencias idempotentes al final) y se resolvió conservando las dos.
+La rama de instalación desciende de `8f84f20` (y por tanto también de `a6cc7d4`): es avance limpio (fast-forward) desde cualquiera de los dos. El único conflicto con el router fue `schema.sql` (ambos añaden sentencias idempotentes al final) y se resolvió conservando las dos.
 
 ## Compatibilidad con la versión instalada
-- Verificada en el repositorio: la rama de instalación desciende de `a6cc7d4`, compila (`next build`), pasa la revisión de tipos y las pruebas.
+- Verificada en el repositorio: la rama de instalación desciende de `8f84f20`, compila (`next build`), pasa la revisión de tipos y las pruebas.
 - **No verificada en el servidor** (no tengo acceso ni debo tenerlo): la versión realmente instalada. El paso 2 (`--verificar`) lo comprueba en solo lectura y se niega a seguir si no coincide.
 
 ## Migración
@@ -56,7 +56,7 @@ Datos: `RAMA=claude/personaliza-sobre-router` y `SHA=<commit completo de 40 cara
   ```
 - Respaldos automáticos de `crea-respaldo.service` + el que lanza el instalador (en `$BACKUPS`).
 - Si el instalador devuelve código 2 (no hay versión compilada): **no** reinicia; sigue la «recuperación manual» que imprime.
-- Para volver al router sin la función: la revertida deja el VPS en `a6cc7d4` (o el commit que hubiera antes), con `AI_ROUTER` apagado.
+- Para volver al router sin la función: la revertida deja el VPS en el commit que hubiera antes (normalmente `8f84f20`), con `AI_ROUTER` apagado.
 
 ## Después de instalar
 Las carpetas `.next.prev.<fecha>` (y `node_modules.prev.<fecha>` si cambió `package-lock.json`) se conservan; bórralas cuando estés tranquilo. Para dejar de usar la rama de instalación, fusiona primero el PR #7 y luego el PR #8 en `main` (el orden evita conflictos).
