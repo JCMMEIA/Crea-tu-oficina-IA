@@ -74,6 +74,20 @@ function Probe({ scene }: { scene: OfficeScene }) {
   return null;
 }
 
+/**
+ * Animación ligera: en lugar de un bucle continuo a 60 fps, pide un cuadro cada 40 ms (≈25 fps) y SOLO si el movimiento está activo y la pestaña es visible.
+ * Sin movimiento no hay temporizador: el lienzo no dibuja nada hasta que la persona lo mueva.
+ */
+function Ticker({ active }: { active: boolean }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    if (!active) return;
+    const t = setInterval(() => { if (!document.hidden) invalidate(); }, 40);
+    return () => clearInterval(t);
+  }, [active, invalidate]);
+  return null;
+}
+
 /** Ajusta la distancia inicial para que TODA la oficina quepa según la proporción del lienzo (pantallas verticales: más lejos). */
 function FitCamera({ base, halfExtent }: { base: [number, number, number]; halfExtent: number }) {
   const { camera, size, invalidate } = useThree();
@@ -95,7 +109,7 @@ export default function Scene3D({ scene, selected, onSelect, onReady, resetKey, 
   const plants = useMemo(() => [[-half + 0.6, -half + 0.6], [half - 0.6, -half + 0.6], [-half + 0.6, half - 0.6], [half - 0.6, half - 0.6]] as [number, number][], [half]);
   const fired = useRef(false);
   return (
-    <Canvas key={resetKey} frameloop={look?.fx.motion ? "always" : "demand"} dpr={[1, 1.75]} shadows={false} gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+    <Canvas key={resetKey} frameloop="demand" dpr={[1, 1.75]} shadows={false} gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
       camera={{ position: [r * 0.74, r * 0.62, r * 0.74], fov: 38, near: 0.1, far: 300 }}
       style={{ touchAction: "none" }} onPointerMissed={() => onSelect(null)}
       onCreated={() => { if (!fired.current) { fired.current = true; onReady(); } }}>
@@ -110,6 +124,7 @@ export default function Scene3D({ scene, selected, onSelect, onReady, resetKey, 
       ))}
       <OrbitControls makeDefault enableDamping={false} maxPolarAngle={Math.PI / 2.15} minPolarAngle={0.2} minDistance={4} maxDistance={r * 4} target={[0, 0.5, 0]} />
       <FitCamera base={[r * 0.74, r * 0.62, r * 0.74]} halfExtent={(scene.bounds.w + scene.bounds.d) * 0.354 + 2} />
+      <Ticker active={!!look?.fx.motion} />
       <Probe scene={scene} />
     </Canvas>
   );
