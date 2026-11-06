@@ -9,7 +9,7 @@ const CYCLE = ["#f97316", "#84cc16", "#06b6d4", "#a855f7", "#ef4444", "#eab308"]
 
 export interface InDesk { id: string; name: string; roleTitle: string; status: "active" | "paused" | "inactive"; skillName: string; skillVersion: number; missingConnections: string[] }
 export interface InZone { id: string; key: string; kind: Zone["kind"]; name: string; custom?: boolean; employees: InDesk[]; services: string[]; extraNotes?: string[]; href?: string; companyId?: string; attention?: number }
-export interface LayoutInput { kind: OfficeScene["kind"]; title: string; subtitle: string; brand: SceneBrand; zones: InZone[]; themeKey?: string }
+export interface LayoutInput { kind: OfficeScene["kind"]; title: string; subtitle: string; brand: SceneBrand; zones: InZone[]; themeKey?: string; theme?: OfficeTheme }
 
 /** Columnas del módulo según nº de estaciones (compacto y legible). */
 export const colsFor = (n: number) => (n <= 3 ? Math.max(1, n) : n <= 6 ? 3 : 4);
@@ -70,7 +70,7 @@ export function buildScene(input: LayoutInput): OfficeScene {
     zones.push({ id: s.z.id, key: s.z.key, kind: s.z.kind, label: s.z.name, color: s.color, icon: s.z.kind === "client" ? "🏢" : ICONS[s.z.key] ?? "🧩", x: c.x, z: c.z, w: s.w, d: s.d, status: st.status, statusLabel: st.label, notes: st.notes, services: s.z.services, desks, href: s.z.href, companyId: s.z.companyId });
   }
   const rc = center(items[0]);
-  const theme: OfficeTheme = getTheme(input.themeKey);
+  const theme: OfficeTheme = input.theme ?? getTheme(input.themeKey);
   return {
     version: 1, kind: input.kind, title: input.title, subtitle: input.subtitle, brand: input.brand, theme,
     reception: { x: rc.x, z: rc.z, w: rec.w, d: rec.d }, zones, bounds: { w: maxX, d: totalD },

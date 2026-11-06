@@ -24,7 +24,11 @@ const ZSTATUS: Record<Zone["status"], [string, string]> = { empty: ["🪑", ""],
 type Mode = "3d" | "2d" | "list";
 interface Props { scene: OfficeScene; height?: number; emptyCta?: { href: string; label: string }; compact?: boolean; testId?: string }
 
-export function OfficeViewer({ scene, height = 560, emptyCta, compact = false, testId = "office" }: Props) {
+export function OfficeViewer({ scene: sceneIn, height = 560, emptyCta, compact = false, testId = "office" }: Props) {
+  // «Reducir movimiento»: además del interruptor guardado, se respeta la preferencia del sistema (prefers-reduced-motion).
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => { try { const m = window.matchMedia("(prefers-reduced-motion: reduce)"); setReduced(m.matches); const h = () => setReduced(m.matches); m.addEventListener?.("change", h); return () => m.removeEventListener?.("change", h); } catch {} }, []);
+  const scene = useMemo<OfficeScene>(() => { const l = sceneIn.theme.look; return reduced && l?.fx.motion ? { ...sceneIn, theme: { ...sceneIn.theme, look: { ...l, fx: { ...l.fx, motion: false } } } } : sceneIn; }, [sceneIn, reduced]);
   const [mode, setMode] = useState<Mode>("2d");
   const [ready3d, setReady3d] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -63,7 +67,7 @@ export function OfficeViewer({ scene, height = 560, emptyCta, compact = false, t
       </div>
       {notice && <div className="notice" role="status">{notice}</div>}
       <div className="o3d-layout">
-        {mode === "list" ? <ListView scene={scene} onSelect={setSel} emptyCta={emptyCta} /> : <div className="o3d-stage" style={{ height }} data-testid={`${testId}-stage`}>
+        {mode === "list" ? <ListView scene={scene} onSelect={setSel} emptyCta={emptyCta} /> : <div className="o3d-stage" style={{ height, ...(scene.theme.look?.fx.immersive ? { background: `linear-gradient(180deg,${scene.theme.look.bgFrom},${scene.theme.look.bgTo})` } : {}) }} data-look={scene.theme.look ? `${scene.theme.look.style}+${scene.theme.look.space}` : "none"} data-testid={`${testId}-stage`}>
           <div className="o3d-2d" style={{ visibility: show3d && ready3d ? "hidden" : "visible" }}>
             <IsoSvg scene={scene} selected={sel} onSelect={setSel} />
           </div>
