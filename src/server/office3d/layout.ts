@@ -7,7 +7,7 @@ const COLORS: Record<string, string> = { marketing: "#ec4899", ventas: "#f59e0b"
 const ICONS: Record<string, string> = { marketing: "📣", ventas: "💼", operaciones: "⚙️", finanzas: "💰", rrhh: "🧑‍🤝‍🧑", atencion: "🎧", direccion: "🧭", automatizaciones: "🤖" };
 const CYCLE = ["#f97316", "#84cc16", "#06b6d4", "#a855f7", "#ef4444", "#eab308"];
 
-export interface InDesk { id: string; name: string; roleTitle: string; status: "active" | "paused" | "inactive"; skillName: string; skillVersion: number; missingConnections: string[] }
+export interface InDesk { id: string; name: string; roleTitle: string; status: "active" | "paused" | "inactive"; skillName: string; skillVersion: number; missingConnections: string[]; working?: boolean }
 export interface InZone { id: string; key: string; kind: Zone["kind"]; name: string; custom?: boolean; employees: InDesk[]; services: string[]; extraNotes?: string[]; href?: string; companyId?: string; attention?: number }
 export interface LayoutInput { kind: OfficeScene["kind"]; title: string; subtitle: string; brand: SceneBrand; zones: InZone[]; themeKey?: string }
 
@@ -61,7 +61,7 @@ export function buildScene(input: LayoutInput): OfficeScene {
     const desks: Desk[] = s.z.employees.map((e, i) => {
       const col = i % s.cols, row = Math.floor(i / s.cols), inRow = Math.min(s.cols, s.z.employees.length - row * s.cols);
       return {
-        id: e.id, label: e.name, roleTitle: e.roleTitle, departmentName: s.z.name, status: e.status, skillName: e.skillName, skillVersion: e.skillVersion, skillCustomized: e.skillVersion > 1, needs: e.missingConnections,
+        id: e.id, label: e.name, roleTitle: e.roleTitle, departmentName: s.z.name, status: e.status, skillName: e.skillName, skillVersion: e.skillVersion, skillCustomized: e.skillVersion > 1, working: e.working || undefined, needs: e.missingConnections,
         x: c.x + (col - (inRow - 1) / 2) * DESK_W, z: c.z + (row - (s.rows - 1) / 2) * DESK_D,
         href: `/empleados/${e.id}`, skillHref: `/empleados/${e.id}/skill`,
       };

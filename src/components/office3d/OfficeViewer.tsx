@@ -4,6 +4,7 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Desk, OfficeScene, Zone } from "@/server/office3d/types";
 import { IsoSvg, Sel } from "./iso";
+import { WorkingDots } from "@/components/Working";
 import { enterClientAction } from "@/app/agency_actions";
 
 const Scene3D = dynamic(() => import("./Scene3D"), { ssr: false });
@@ -19,6 +20,8 @@ class Boundary extends React.Component<{ onError: () => void; children: React.Re
 }
 
 const STATUS: Record<Desk["status"], [string, string]> = { active: ["✅ Listo para trabajar", "ok"], paused: ["⏸ En pausa", "warn"], inactive: ["⏸ Apagado", "bad"] };
+/** Estado visible del puesto: «Trabajando…» (animado) si tiene una tarea en curso. */
+const deskState = (d: Desk): [React.ReactNode, string] => (d.status === "active" && d.working ? [<><WorkingDots /> Trabajando…</>, "working"] : STATUS[d.status]);
 const ZSTATUS: Record<Zone["status"], [string, string]> = { empty: ["🪑", ""], needs_setup: ["🔧", "warn"], ready: ["✅", "ok"] };
 
 type Mode = "3d" | "2d" | "list";
@@ -103,11 +106,11 @@ function ZonePanel({ z, scene, onSelect, onClose }: { z: Zone; scene: OfficeScen
   </div>);
 }
 function DeskPanel({ d, z, scene, onClose }: { d: Desk; z: Zone; scene: OfficeScene; onClose: () => void }) {
-  const [label, cls] = STATUS[d.status];
+  const [label, cls] = deskState(d);
   const agencyView = scene.kind === "agency";
   return (<div data-testid="panel-desk"><button className="ghost" onClick={onClose} aria-label="Cerrar detalle">← Resumen</button>
     <h3>🧑‍💼 {d.label}</h3><p className="muted">{d.roleTitle}</p>
-    <p><span className={`state ${cls}`}>{label}</span> <span className="chip"><span className="dot" style={{ background: z.color }} /> {z.kind === "client" ? z.label : d.departmentName}</span></p>
+    <p><span className={`state ${cls}`} role={d.working ? "status" : undefined}>{label}</span> <span className="chip"><span className="dot" style={{ background: z.color }} /> {z.kind === "client" ? z.label : d.departmentName}</span></p>
     {d.needs.length > 0 && <p><span className="state warn">🔧 Falta configurar</span> Conéctale: {d.needs.join(", ")}.</p>}
     <p><b>Lo que sabe hacer:</b> {d.skillName}{d.skillCustomized && <span className="state ok">🎓 Le enseñaste</span>}</p>
     {agencyView && z.companyId ? <EnterClient companyId={z.companyId} label="Abrir la oficina de este cliente" />
@@ -125,5 +128,5 @@ function ListView({ scene, onSelect, emptyCta }: { scene: OfficeScene; onSelect:
   return (<div data-testid="list-view" role="list" aria-label="Áreas y empleados de la oficina">{scene.zones.map((z) => (<section key={z.id} className="card" role="listitem" style={{ marginBottom: 10, borderLeft: `6px solid ${z.color}` }}>
     <h3>{z.icon} {z.label} <span className={`state ${ZSTATUS[z.status][1]}`}>{ZSTATUS[z.status][0]} {z.statusLabel}</span></h3>
     {z.notes.map((n) => <p className="muted" key={n}>{n}</p>)}
-    {z.desks.length ? <ul className="o3d-list">{z.desks.map((d) => <li key={d.id}><button className="ghost" onClick={() => onSelect({ type: "desk", id: d.id })}>🧑‍💼 {d.label} — {STATUS[d.status][0]}{d.needs.length ? " · 🔧 falta configurar" : ""}</button></li>)}</ul> : <p className="muted">Nadie todavía.</p>}</section>))}</div>);
+    {z.desks.length ? <ul className="o3d-list">{z.desks.map((d) => <li key={d.id}><button className="ghost" onClick={() => onSelect({ type: "desk", id: d.id })}>🧑‍💼 {d.label} — {deskState(d)[0]}{d.needs.length ? " · 🔧 falta configurar" : ""}</button></li>)}</ul> : <p className="muted">Nadie todavía.</p>}</section>))}</div>);
 }

@@ -52,7 +52,8 @@ export function IsoSvg({ scene, selected = null, onSelect, label = "Vista isomé
         {dSel && <ellipse cx={a.px} cy={a.py} rx={22} ry={11} fill="none" stroke="currentColor" strokeWidth={2.5} />}
         <Box x={d.x} z={d.z - 0.1} w={1.2} d={0.7} h={0.7} color="#e5e1d8" />
         <Box x={d.x} z={d.z - 0.3} w={0.55} d={0.06} h={0.38} y0={0.74} color="#334155" />
-        <ellipse cx={a.px} cy={a.py + 2} rx={9} ry={4} fill={statusColor(d.status)} opacity={0.9} />
+        {d.working && <ellipse className="wk-ring" cx={a.px} cy={a.py + 2} rx={15} ry={7} fill="none" stroke="#a78bfa" strokeWidth={2.5} />}
+        <ellipse cx={a.px} cy={a.py + 2} rx={9} ry={4} fill={d.working ? "#a78bfa" : statusColor(d.status)} opacity={0.9} />
         <rect x={a.px - 7} y={a.py - 22} width={14} height={20} rx={6} fill={body} />
         <circle cx={head.px} cy={head.py + 2} r={6} fill="#fcd9b6" stroke={body} strokeWidth={1.5} />
         <title>{`${d.label} — ${d.roleTitle}`}</title>

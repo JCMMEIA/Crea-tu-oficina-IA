@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TASK_STATUS, friendlyError } from "./lang";
+import { WorkingDots } from "@/components/Working";
 
 /** Mensaje de confirmación o error. Los errores se muestran SIEMPRE en lenguaje sencillo. */
 export function Flash({ sp }: { sp: { error?: string; ok?: string } }) {
@@ -8,7 +9,7 @@ export function Flash({ sp }: { sp: { error?: string; ok?: string } }) {
   return null;
 }
 /** Estado de una tarea con icono + texto (nunca solo color). */
-export function StatusChip({ s }: { s: string }) { const t = TASK_STATUS[s] ?? { icon: "•", text: s, tone: "" as const }; return <span className={`state ${t.tone}`}><span aria-hidden="true">{t.icon}</span> {t.text}</span>; }
+export function StatusChip({ s }: { s: string }) { if (s === "in_progress") return <span className="state working" role="status"><WorkingDots /> Trabajando…</span>; const t = TASK_STATUS[s] ?? { icon: "•", text: s, tone: "" as const }; return <span className={`state ${t.tone}`}><span aria-hidden="true">{t.icon}</span> {t.text}</span>; }
 /** Estado vacío útil: invita a hacer lo siguiente con un botón grande. */
 export function EmptyState({ icon, title, text, href, cta, secondary }: { icon: string; title: string; text: string; href?: string; cta?: string; secondary?: { href: string; label: string } }) {
   return (<div className="empty-state"><div className="ic" aria-hidden="true">{icon}</div><h3>{title}</h3><p>{text}</p>

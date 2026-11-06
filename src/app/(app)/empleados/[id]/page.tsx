@@ -11,13 +11,15 @@ import { assignTaskAction, employeeOpAction, permissionsAction, personalizeEmplo
 import { getToolkit } from "@/server/connectors/catalog";
 import { practiceExample } from "@/server/guide/practice";
 import { Toast } from "@/lib/guide";
+import { TaskForm, SubmitButton, EmployeeState, AutoRefresh } from "@/components/Working";
+import { workingEmployeeIds } from "@/server/tasks/working";
 
 export const metadata = { title: "Mi empleado" };
 const PERM = [["none", "No puede usarla"], ["read", "Mirar y proponer (tú apruebas cada cambio)"], ["write", "Puede actuar si tú lo permitiste al enseñarle"]] as const;
 export default async function Empleado({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; ok?: string }> }) {
   const { id } = await params; const sp = await searchParams; const { db, actor } = await requireActor();
   const e = (await db.query("SELECT * FROM employees WHERE id=$1 AND company_id=$2", [id, actor.companyId]))[0]; if (!e) notFound();
-  const sk = await getCurrentSkill(db, actor, id);
+  const sk = await getCurrentSkill(db, actor, id); const working = (await workingEmployeeIds(db, actor.companyId)).has(id);
   const tasks = await db.query("SELECT id,title,status,created_at,cost_usd::float c FROM tasks WHERE employee_id=$1 AND company_id=$2 ORDER BY created_at DESC LIMIT 6", [id, actor.companyId]);
   const connected = new Set((await db.query("SELECT toolkit FROM connections WHERE company_id=$1 AND status='conectado'", [actor.companyId])).map((c) => c.toolkit as string));
   const toolkits = [...new Set([...sk.spec.authorizedTools, ...Object.keys(e.permissions)])];
@@ -25,14 +27,14 @@ export default async function Empleado({ params, searchParams }: { params: Promi
   const idn = identityFor(e.template_key); const prof = e.template_key ? profileFor(e.template_key) : null; const shown = displayName(e as any);
   const ex = practiceExample(e.template_key ?? "");
   const op = (o: string, label: string, cls = "ghost") => <form className="inline" action={employeeOpAction}><input type="hidden" name="id" value={id} /><input type="hidden" name="op" value={o} /><button className={cls}>{label}</button></form>;
-  return (<><p><Link href="/departamentos">← Mis empleados</Link></p>{sp.ok && <Toast message={sp.ok} />}<header className="emp-head"><EmployeePhoto name={shown} templateKey={e.template_key} custom={e.photo} size={96} /><div><h1 style={{ margin: 0 }} data-testid="emp-nombre">{shown}</h1><p className="lead" style={{ margin: "4px 0" }}>{idn?.puesto ?? e.role_title}{prof ? ` · ${prof.departamento.nombre}` : ""}</p>{idn && <p className="muted" style={{ margin: 0 }}>Especialidad: {idn.especialidad}</p>}<p style={{ margin: "8px 0 0" }}><AiTag /></p></div></header><p className="lead">{e.description}</p><ReadinessStepper r={ready} /><Flash sp={{ error: sp.error }} />
-    <p><span className={`state ${e.status === "active" ? "ok" : "warn"}`}>{e.status === "active" ? "Activo" : "En pausa"}</span> <span className="state">Enseñanza n.º {e.current_skill_version}</span></p>
+  return (<><p><Link href="/departamentos">← Mis empleados</Link></p>{sp.ok && <Toast message={sp.ok} />}<header className="emp-head"><EmployeePhoto name={shown} templateKey={e.template_key} custom={e.photo} size={96} /><div><h1 style={{ margin: 0 }} data-testid="emp-nombre">{shown}</h1><p className="lead" style={{ margin: "4px 0" }}>{idn?.puesto ?? e.role_title}{prof ? ` · ${prof.departamento.nombre}` : ""}</p>{idn && <p className="muted" style={{ margin: 0 }}>Especialidad: {idn.especialidad}</p>}<p style={{ margin: "8px 0 0" }}><AiTag /></p></div></header><p className="lead">{e.description}</p><ReadinessStepper r={ready} /><Flash sp={{ error: sp.error }} /><AutoRefresh active={working} />
+    <p><EmployeeState status={e.status} working={working} idleText="✅ Listo para trabajar" /> <span className="state">Enseñanza n.º {e.current_skill_version}</span></p>
     <div className="actions"><a className="action" href="#tarea"><span className="ic" aria-hidden="true">📝</span><b>Darle una tarea</b><span className="t">Pídele un trabajo ahora.</span></a>
       <Link className="action" href={`/empleados/${id}/ensenar`} data-testid="teach-link"><span className="ic" aria-hidden="true">🎓</span><b>Enseñarle</b><span className="t">Cuéntale cómo quieres que trabaje.</span></Link>
       <Link className="action" href="/actividad"><span className="ic" aria-hidden="true">📋</span><b>Ver su historial</b><span className="t">Todo lo que ha hecho.</span></Link></div>
-    <div className="card" id="tarea"><h2>📝 Darle una tarea</h2><form action={assignTaskAction}><input type="hidden" name="employeeId" value={id} /><label htmlFor="ins">¿Qué necesitas?</label><Help>Escríbelo como se lo dirías a una persona.</Help>
+    <div className="card" id="tarea"><h2>📝 Darle una tarea</h2><TaskForm action={assignTaskAction} workerName={shown.split(" ")[0]} maxSeconds={sk.spec.autonomy.maxTaskSeconds}><input type="hidden" name="employeeId" value={id} /><label htmlFor="ins">¿Qué necesitas?</label><Help>Escríbelo como se lo dirías a una persona.</Help>
       <textarea id="ins" name="instruction" required rows={3} placeholder={`Ejemplo: ${ex.pedido.replace(" para Café Luna", "")}`} data-testid="emp-task-text" />
-      <p><button className="big" disabled={e.status !== "active"} data-testid="emp-task-send">Pedir tarea</button></p></form>
+      <p><SubmitButton className="big" disabled={e.status !== "active"} testId="emp-task-send">Pedir tarea</SubmitButton></p></TaskForm>
       <p className="muted">Puede tardar hasta {sk.spec.autonomy.maxTaskSeconds} segundos. Si hay que cambiar algo importante, te pedirá permiso.</p></div>
     <div className="card" style={{ marginTop: 12 }}><h2>📋 Trabajo reciente</h2>{tasks.length ? <table><tbody>{tasks.map((t) => <tr key={t.id}><td><Link href={`/actividad/${t.id}`}>{t.title}</Link><div className="muted">{when(t.created_at)}</div></td><td><StatusChip s={t.status} /></td></tr>)}</tbody></table> : <EmptyState icon="🌱" title="Todavía no ha trabajado" text="Pídele su primera tarea: verás aquí cómo le fue." />}</div>
     {prof && <details className="card" style={{ marginTop: 12 }} data-testid="emp-perfil"><summary><b>Perfil: responsabilidades y herramientas</b></summary><h3>Responsabilidades</h3><ul>{prof.responsabilidades.map((r) => <li key={r}>{r}</li>)}</ul><h3>Herramientas</h3>{prof.herramientas.length ? <ul>{prof.herramientas.map((h) => <li key={h.toolkit}>{h.label} — {connected.has(h.toolkit) ? "conectada" : "sin conectar"} ({h.obligatoria ? "necesaria" : "opcional"})</li>)}</ul> : <p className="muted">No usa aplicaciones.</p>}</details>}

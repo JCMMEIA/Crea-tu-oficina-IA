@@ -4,6 +4,7 @@ import { EMPLOYEES, getTemplate } from "../catalog/data";
 import { getToolkit } from "../connectors/catalog";
 import { buildScene, InZone } from "./layout";
 import { OfficeScene, SceneBrand } from "./types";
+import { workingEmployeeIds } from "../tasks/working";
 
 const hexOk = (c: unknown) => (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c) ? c : "#4f46e5");
 const styleOf = (b: Record<string, any> | null) => (typeof b?.style === "string" ? b.style : "moderno");
@@ -18,6 +19,7 @@ export async function companyScene(db: Db, actor: Actor): Promise<OfficeScene> {
   const c = (await db.query("SELECT c.name, a.name agency_name, a.brand FROM companies c JOIN agencies a ON a.id=c.agency_id WHERE c.id=$1", [actor.companyId]))[0];
   const deps = await db.query("SELECT id,key,name,custom FROM departments WHERE company_id=$1", [actor.companyId]);
   const emps = await db.query("SELECT id,department_id,template_key,name,role_title,status,current_skill_version FROM employees WHERE company_id=$1 ORDER BY created_at", [actor.companyId]);
+  const working = await workingEmployeeIds(db, actor.companyId);
   const connected = new Set((await db.query("SELECT toolkit FROM connections WHERE company_id=$1 AND status='conectado'", [actor.companyId])).map((r) => r.toolkit as string));
   const svc = await db.query("SELECT s.name, s.template_keys FROM client_services cs JOIN agency_services s ON s.id=cs.service_id WHERE cs.company_id=$1", [actor.companyId]);
   const autos = await db.query("SELECT id,name,enabled FROM automations WHERE company_id=$1 ORDER BY created_at", [actor.companyId]);
@@ -29,7 +31,7 @@ export async function companyScene(db: Db, actor: Actor): Promise<OfficeScene> {
       services: svc.filter((s) => (s.template_keys as string[]).some((k) => keys.has(k) || mine.some((e) => e.template_key === k))).map((s) => s.name as string),
       employees: mine.map((e) => {
         const t = e.template_key ? getTemplate(e.template_key) : undefined;
-        return { id: e.id, name: e.name, roleTitle: e.role_title, status: e.status, skillName: t?.skillName ?? "Skill personalizada", skillVersion: e.current_skill_version,
+        return { id: e.id, name: e.name, roleTitle: e.role_title, status: e.status, skillName: t?.skillName ?? "Skill personalizada", skillVersion: e.current_skill_version, working: working.has(e.id),
           missingConnections: (t?.connections ?? []).filter((x) => x.required && !connected.has(x.toolkit)).map((x) => getToolkit(x.toolkit)?.label ?? x.toolkit) };
       }),
     };
