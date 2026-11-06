@@ -24,6 +24,11 @@ Cada oficina (agencia) elige **estilo** (cómo se ve) y **espacio** (dónde est�
 ## Despliegue (lo hace el dueño)
 Con `deploy/convivencia/instalar_personaliza.sh` desde la rama `claude/personaliza-sobre-router` (el instalador v2 del router rechazaría este PR porque nace de `main`). Procedimiento y reversión: `docs/personaliza/INSTALAR_Y_REVERTIR.md`. No usar `actualizar_convivencia.sh`. La migración se aplica sola al arrancar y es idempotente.
 
+## Dependencia entre ramas (nada se fusiona sin autorización del dueño)
+- `claude/personaliza-tu-oficina` (este PR #8, contra `main`): solo la función; se revisa y se fusiona **después** del PR #7.
+- `claude/personaliza-sobre-router`: PR #7 (`8f84f20`, router apagado) + este PR #8. Es la rama que instala `instalar_personaliza.sh` en el VPS. Comparación con el router: solo cambian los archivos de Personaliza; en `schema.sql` conviven las tablas del router y la columna `office_design`.
+- Orden recomendado para `main`: primero PR #7, luego PR #8.
+
 ## Reporte final de preparación para producción
 **Veredicto: NO ESTÁ LISTO para desplegar todavía** (ver «Pendiente»). Nada se ha fusionado, desplegado ni tocado en el VPS.
 
@@ -34,7 +39,10 @@ Con `deploy/convivencia/instalar_personaliza.sh` desde la rama `claude/personali
 
 ### Pruebas (copia de verificación en D:, rama combinada PR #7 + PR #8)
 - Pasan completos: agency, catalogo, channels, commerce, commercial, configurar_correo, configurar_openrouter, core, design, email, employees, ia_costos, ia_panel_modelos, ia_privacidad, instalar_doc, instalar_personaliza (6/6), instalar_router, instalar_router_recuperacion, leads, messaging (solo, por memoria), office3d, openrouter_contrato, personaliza (21/21), pilot, redesign, router, stripe.
-- **No concluida:** `prueba_humo.test.ts` (PR #7, local con clave falsa) se quedó colgada en este equipo por lanzar procesos hijos; el PR #8 no toca ese código.
+- **Bloqueadas por el equipo local de Windows (no por el código):**
+  - `prueba_humo.test.ts` (PR #7, local con clave falsa) se cuelga: lanza `spawn("npx", …)` sin shell, que en Windows no encuentra `npx` y la prueba espera para siempre. El script real (`scripts/ia/prueba_humo.ts`) sí corre bien en modo simulacro (sin clave, sin llamadas, salida 0). El PR #8 no toca ese código; debe ejecutarse en Linux o en CI.
+  - `instalar_real_historia.test.ts` se omite sola porque exige ser root en Linux. Tampoco la cubre este equipo.
+  - Impacto: ambas pertenecen al instalador/prueba del router (PR #7), no a la función Personaliza. El riesgo restante es que la simulación completa del instalador sobre la historia real no se ha visto pasar aquí.
 - Hubo 3 fallos intermedios por finales de línea de Windows (CRLF) al extraer en el equipo del dueño; git guarda LF y el VPS los recibe bien. Las pruebas de `bash -n` necesitan Git Bash en el PATH (el `bash` de WSL no tiene distribución instalada).
 - Hidratación de React: 0 errores en 21 cargas (7 diseños, desarrollo y producción, PC y celular).
 
