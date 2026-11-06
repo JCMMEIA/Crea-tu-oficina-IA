@@ -16,7 +16,7 @@ env:
 
 jobs:
   combinada:
-    name: Rama combinada (PR #7 + PR #8) en Linux
+    name: "Rama combinada (PR #7 + PR #8) en Linux"
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -33,7 +33,7 @@ jobs:
         run: sudo env "PATH=$PATH" npx vitest run tests/instalar_personaliza_real.test.ts
 
   router-pr7:
-    name: PR #7 (router) en Linux, incluidas prueba_humo e instalar_real_historia
+    name: "PR #7 (router) en Linux, incluidas prueba_humo e instalar_real_historia"
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
-      - name: prueba_humo (servidor local, clave ficticia: cero llamadas reales)
+      - name: "prueba_humo (servidor local, clave ficticia, cero llamadas reales)"
         run: npx vitest run tests/prueba_humo.test.ts
       - name: Instalador v2 sobre la historia real (como root, servicios simulados)
         run: sudo env "PATH=$PATH" npx vitest run tests/instalar_real_historia.test.ts tests/instalar_router_recuperacion.test.ts
@@ -71,10 +71,10 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -q -f src/server/db/schema.sql
           psql -v ON_ERROR_STOP=1 -q -f src/server/db/schema.sql
-      - name: La columna office_design existe, es jsonb y las filas nuevas valen '{}'
+      - name: "La columna office_design existe, es jsonb y tiene valor por omisión"
         run: |
           test "$(psql -Atc "SELECT data_type FROM information_schema.columns WHERE table_name='agencies' AND column_name='office_design'")" = "jsonb"
           psql -v ON_ERROR_STOP=1 -Atc "SELECT column_default FROM information_schema.columns WHERE table_name='agencies' AND column_name='office_design'"
-      - name: Guardar y leer un diseño sin tocar la marca
+      - name: La columna brand sigue existiendo
         run: |
           psql -v ON_ERROR_STOP=1 -Atc "SELECT column_name FROM information_schema.columns WHERE table_name='agencies' AND column_name='brand'" | grep -qx brand
