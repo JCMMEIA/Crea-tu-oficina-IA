@@ -1,4 +1,0 @@
-# Los scripts y guias que se ejecutan o se copian al VPS (Linux) siempre con finales LF
-*.sh text eol=lf
-*.md text eol=lf
-deploy/** text eol=lf
