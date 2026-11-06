@@ -7,6 +7,7 @@ import { channelStatus } from "@/server/messaging/runtime";
 import { connectAction } from "../../actions";
 import { appInterestAction } from "../../agency_actions";
 import { can } from "@/server/auth";
+import { GithubCard } from "./GithubCard";
 
 export const metadata = { title: "Conecta tus aplicaciones" };
 export default async function Conexiones({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string; ayuda?: string }> }) {
@@ -34,5 +35,6 @@ export default async function Conexiones({ searchParams }: { searchParams: Promi
     <Tip>Cada tarjeta dice la verdad: si algo todavía no se puede conectar, lo verás como «Necesita que la activen» o «Próximamente». Nunca fingimos una conexión.</Tip>
     {agency && <p className="muted">Estás conectando las aplicaciones de este cliente. <Link href="/agencia/conexiones">Elegir otro cliente</Link></p>}
     <div className="grid" data-testid="apps">{SIMPLE_APPS.map(card)}</div>
+    <div className="grid" style={{ marginTop: 12 }}><GithubCard db={db} actor={actor} /></div>
     <details className="card" style={{ marginTop: 12 }}><summary><b>🧩 Otras aplicaciones</b></summary><div className="grid" style={{ marginTop: 10 }}>{OTHER_APPS.map(card)}</div></details></>);
 }

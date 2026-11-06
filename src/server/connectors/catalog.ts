@@ -41,7 +41,7 @@ export const TOOLKITS: ToolkitSpec[] = [
     { action: "list_events", description: "Listar eventos", kind: "read", schema: obj({ from: str("Desde"), to: str("Hasta") }) },
     { action: "create_event", description: "Crear un evento", kind: "write", schema: obj({ title: str("Título"), start: str("Inicio ISO"), end: str("Fin ISO") }, ["title", "start", "end"]) }] },
   { key: "notion", label: "Notion", category: "Productividad", availability: "composio", note: "Vía Composio.", tools: [] },
-  { key: "github", label: "GitHub", category: "Productividad", availability: "composio", note: "Vía Composio.", tools: [] },
+  { key: "github", label: "GitHub", category: "Productividad", availability: "oficial-directa", note: "GitHub App propia, SOLO LECTURA: importa la documentación de los repositorios que el cliente autoriza. Se conecta desde su tarjeta en Conexiones.", tools: [] },
   { key: "asana", label: "Asana", category: "Productividad", availability: "composio", note: "Vía Composio.", tools: [
     { action: "list_tasks", description: "Listar tareas", kind: "read", schema: obj() },
     { action: "create_task", description: "Crear una tarea", kind: "write", schema: obj({ name: str("Nombre") }, ["name"]) }] },

@@ -324,3 +324,16 @@ CREATE INDEX IF NOT EXISTS ai_calls_task_idx ON ai_calls(task_id);
 CREATE TABLE IF NOT EXISTS ai_alerts (account_id text NOT NULL, period date NOT NULL, threshold int NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (account_id, period, threshold));
 -- Router: proveedores aprobados por modelo (se aplican con provider.only en OpenRouter). Aditivo e idempotente.
 ALTER TABLE ai_models ADD COLUMN IF NOT EXISTS allowed_providers text[] NOT NULL DEFAULT '{}';
+
+-- GitHub (solo lectura): repositorios elegidos, fragmentos de documentación y empleados con acceso. Aditivo e idempotente; el código anterior no usa estas tablas.
+CREATE TABLE IF NOT EXISTS github_sources (
+  id text PRIMARY KEY, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  repo text NOT NULL, branch text, path_filters jsonb NOT NULL DEFAULT '[]'::jsonb, head_sha text, files int NOT NULL DEFAULT 0, skipped int NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'pendiente', last_sync timestamptz, last_error text, rejected jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE (company_id, repo));
+CREATE TABLE IF NOT EXISTS github_chunks (
+  id bigserial PRIMARY KEY, company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE, source_id text NOT NULL REFERENCES github_sources(id) ON DELETE CASCADE,
+  repo text NOT NULL, path text NOT NULL, blob_sha text NOT NULL, commit_sha text NOT NULL, chunk_index int NOT NULL, content text NOT NULL, search_text text NOT NULL);
+CREATE INDEX IF NOT EXISTS github_chunks_source_idx ON github_chunks(company_id, source_id, path);
+CREATE INDEX IF NOT EXISTS github_chunks_fts_idx ON github_chunks USING gin (to_tsvector('simple', search_text));
+CREATE TABLE IF NOT EXISTS github_access (
+  company_id text NOT NULL REFERENCES companies(id) ON DELETE CASCADE, employee_id text NOT NULL REFERENCES employees(id) ON DELETE CASCADE, PRIMARY KEY (company_id, employee_id));

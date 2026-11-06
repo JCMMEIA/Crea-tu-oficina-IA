@@ -65,6 +65,7 @@ export async function startConnection(db: Db, actor: Actor, toolkit: string, ada
   assertCan(actor, "connections:manage");
   const spec = getToolkit(toolkit);
   if (!spec) throw new Error("Integración desconocida.");
+  if (toolkit === "github") throw new Error("GitHub se conecta desde su propia tarjeta (GitHub App de solo lectura).");
   if (spec.availability === "no-disponible") throw new Error(`${spec.label} aún no está disponible: ${spec.note}`);
   if (!adapter.configured()) throw new Error("Falta configurar Composio (COMPOSIO_API_KEY). Consulta la guía de conexión.");
   const init = await adapter.initiate(actor.companyId, toolkit);
